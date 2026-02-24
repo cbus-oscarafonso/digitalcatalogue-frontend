@@ -6,7 +6,9 @@ const $ = (id) => document.getElementById(id);
 const SUPABASE_URL = "https://ytwwcrhtcsdpqeualnsx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_QdZJOKCMMhOa9Xgb1ab-ew_ZJFeVncA";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL, SUPABASE_ANON_KEY
+);
 
 console.log("Supabase client:", supabase);
 
