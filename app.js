@@ -1,5 +1,3 @@
-console.log("APPJS BOOT", Date.now(), location.href);
-
 const $ = (id) => document.getElementById(id);
 
 // ===== Supabase client (troca pelos teus valores) =====
@@ -10,7 +8,10 @@ const supabaseClient = window.supabase.createClient(
   SUPABASE_URL, SUPABASE_ANON_KEY
 );
 
-console.log("Supabase client:", supabase);
+(async () => {
+  const { data, error } = await supabaseClient.auth.getSession();
+  console.log("SUPABASE getSession:", { data, error });
+})();
 
 // Canonicalize svg identifiers across Windows (case-insensitive) and Linux servers (case-sensitive)
 function canonSvgBase(seg) {
