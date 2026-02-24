@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login – Digital Catalogue</title>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .card {
+      background: white;
+      padding: 32px;
+      width: 340px;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .msg {
+      margin-top: 12px;
+      font-size: 14px;
+      min-height: 18px;
+    }
+
+    .ok { color: green; }
+    .err { color: red; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>Login</h2>
+
+    <label>Email</label>
+    <input id="email" type="email" />
+
+    <label>Password</label>
+    <input id="password" type="password" />
+
+    <button id="btnLogin">Sign in</button>
+    <button id="btnLogout" style="margin-top:8px;">Sign out</button>
+
+    <div id="status" class="msg"></div>
+  </div>
+
+  <script>
+    // CONFIG
+    const SUPABASE_URL = "https://ytwwcrhtcsdpqeualnsx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_QdZJOKCMMhOa9Xgb1ab-ew_ZJFeVncA";
+
+    const supabaseClient = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+    const $ = (id) => document.getElementById(id);
+    const statusEl = $("status");
+
+    function setMessage(text, success = false) {
+      statusEl.textContent = text;
+      statusEl.className = "msg " + (success ? "ok" : "err");
+    }
+
+    async function refreshStatus() {
+      const { data, error } = await supabaseClient.auth.getSession();
+
+      if (error) {
+        setMessage("Session error: " + error.message);
+        return;
+      }
+
+      if (data.session) {
+        setMessage("✔ Logged in as " + data.session.user.email, true);
+      } else {
+        setMessage("Not authenticated");
+      }
+    }
+
+    $("btnLogin").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+
+      if (!email || !password) {
+        setMessage("Please enter email and password.");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        setMessage("Login error: " + error.message);
+      } else {
+        setMessage("Login successful.", true);
+      }
+
+      await refreshStatus();
+    });
+
+    $("btnLogout").addEventListener("click", async () => {
+      const { error } = await supabaseClient.auth.signOut();
+
+      if (error) {
+        setMessage("Logout error: " + error.message);
+      } else {
+        setMessage("Logged out.");
+      }
+
+      await refreshStatus();
+    });
+
+    refreshStatus();
+  </script>
+</body>
+</html>
