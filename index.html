@@ -64,12 +64,14 @@
           C19.2 14.5 23.7 18.5 24 24Z" />
           </svg>
         </span>
-        <span class="clientText">Client area</span>
+        <span class="clientText">Client area
+        </span>
 
-        <button class="clientBtn" id="btnLogout" title="Sign out" aria-label="Sign out">
-          Sign out
-        </button>
       </a>
+
+      <button class="clientBtn" id="btnLogout" title="Sign out" aria-label="Sign out">
+        Sign out
+      </button>
     </div>
   </header>
 
@@ -183,9 +185,14 @@
       if (!session) return;
 
       const v = Date.now();
-      const s = document.createElement('script');
-      s.src = 'app.js?v=' + v;
-      document.body.appendChild(s);
+
+      const app = document.createElement('script');
+      app.src = 'app.js?v=' + v;
+      document.body.appendChild(app);
+
+      const logout = document.createElement('script');
+      logout.src = 'logout.js?v=' + v;
+      document.body.appendChild(logout);
     })();
   </script>
 </body>

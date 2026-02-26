@@ -38,6 +38,11 @@
         <div class="crumbs"></div>
 
         <div class="topRightTitle">Search</div>
+
+        <div class="topRightTitle"><button class="clientBtn" id="btnLogout" title="Sign out" aria-label="Sign out">
+                Sign out
+            </button>
+        </div>
     </header>
 
     <main class="layout layoutSearch">
@@ -77,9 +82,15 @@
             const session = await window.requireAuth("login.html");
             if (!session) return;
 
+            const v = Date.now();
+
             const s = document.createElement('script');
-            s.src = 'search.js';
+            s.src = 'search.js?v=' + v;;
             document.body.appendChild(s);
+
+            const logout = document.createElement('script');
+            logout.src = 'logout.js?v=' + v;
+            document.body.appendChild(logout);
         })();
     </script>
 </body>

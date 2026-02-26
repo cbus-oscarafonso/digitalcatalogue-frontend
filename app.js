@@ -2,7 +2,7 @@ const $ = (id) => document.getElementById(id);
 
 
 (async () => {
-  const { data, error } = await supabaseClient.auth.getSession();
+  const { data, error } = await window.sb.auth.getSession();
   console.log("SUPABASE getSession:", { data, error });
 })();
 
