@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -24,7 +25,7 @@
       padding: 32px;
       width: 340px;
       border-radius: 8px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     }
 
     h2 {
@@ -50,8 +51,13 @@
       min-height: 18px;
     }
 
-    .ok { color: green; }
-    .err { color: red; }
+    .ok {
+      color: green;
+    }
+
+    .err {
+      color: red;
+    }
   </style>
 </head>
 
@@ -120,11 +126,10 @@
 
       if (error) {
         setMessage("Login error: " + error.message);
-      } else {
-        setMessage("Login successful.", true);
+        return;
       }
 
-      await refreshStatus();
+      window.location.replace("index.html");
     });
 
     $("btnLogout").addEventListener("click", async () => {
@@ -136,10 +141,11 @@
         setMessage("Logged out.");
       }
 
-      await refreshStatus();
+    
     });
 
     refreshStatus();
   </script>
 </body>
+
 </html>
