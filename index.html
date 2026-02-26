@@ -15,7 +15,7 @@
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
+
   <!-- Login guard -->
   <script src="auth-guard.js"></script>
 
@@ -168,10 +168,15 @@
   </div>
 
   <script>
-    const v = Date.now();
-    const s = document.createElement('script');
-    s.src = 'app.js?v=' + v;
-    document.body.appendChild(s);
+    (async () => {
+      const session = await window.requireAuth("login.html");
+      if (!session) return;
+
+      const v = Date.now();
+      const s = document.createElement('script');
+      s.src = 'app.js?v=' + v;
+      document.body.appendChild(s);
+    })();
   </script>
 </body>
 
