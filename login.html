@@ -131,7 +131,9 @@
         return;
       }
 
-      window.location.replace("index.html");
+      const returnTo = sessionStorage.getItem("returnTo") || "index.html";
+      sessionStorage.removeItem("returnTo");
+      window.location.replace(returnTo);
     });
 
     $("btnLogout").addEventListener("click", async () => {

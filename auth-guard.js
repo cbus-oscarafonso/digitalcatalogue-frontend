@@ -23,6 +23,8 @@ window.addEventListener("pageshow", async () => {
     // if this page is using BFCache, re-check session
     const { data } = await window.sb.auth.getSession();
     if (!data.session) {
+        const returnTo = location.pathname.split("/").pop() + location.hash;
+        try { sessionStorage.setItem("returnTo", returnTo); } catch { }
         window.location.replace("login.html");
     }
 });
