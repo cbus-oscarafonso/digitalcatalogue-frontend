@@ -13,6 +13,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Search</title>
     <link rel="stylesheet" href="styles.css" />
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Auth guard -->
+    <script src="auth-guard.js"></script>
 </head>
 
 <body>
@@ -42,7 +48,7 @@
 
                     <div class="searchMeta">
                         <div id="searchStatus" class="searchStatus">Loading index...</div>
-                       
+
                     </div>
                 </div>
 
@@ -60,7 +66,16 @@
         </section>
     </main>
 
-    <script src="search.js"></script>
+    <script>
+        (async () => {
+            const session = await window.requireAuth("login.html");
+            if (!session) return;
+
+            const s = document.createElement('script');
+            s.src = 'search.js';
+            document.body.appendChild(s);
+        })();
+    </script>
 </body>
 
 </html>

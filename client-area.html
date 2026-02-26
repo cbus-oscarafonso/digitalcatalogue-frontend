@@ -1,17 +1,27 @@
 <!doctype html>
 <html lang="pt-PT">
+
 <head>
   <meta charset="utf-8" />
 
   <!-- Google Font: Rubik -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Client area</title>
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Auth guard -->
+  <script src="auth-guard.js"></script>
+
 </head>
+
 <body>
   <header class="topbar">
     <div class="brand">
@@ -76,6 +86,16 @@
     </aside>
   </main>
 
-  <script src="client-area.js"></script>
+  <script>
+    (async () => {
+      const session = await window.requireAuth("login.html");
+      if (!session) return;
+
+      const s = document.createElement('script');
+      s.src = 'client-area.js';
+      document.body.appendChild(s);
+    })();
+  </script>
 </body>
+
 </html>
