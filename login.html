@@ -49,6 +49,8 @@
       margin-top: 12px;
       font-size: 14px;
       min-height: 18px;
+      line-height: 1.3;
+      word-break: break-word;
     }
 
     .ok {
@@ -66,28 +68,38 @@
     <h2>Login</h2>
 
     <label>Email</label>
-    <input id="email" type="email" />
+    <input id="email" type="email" autocomplete="email" />
 
     <label>Password</label>
-    <input id="password" type="password" />
+    <input id="password" type="password" autocomplete="current-password" />
 
     <button id="btnLogin">Sign in</button>
     <button id="btnLogout" style="margin-top:8px;">Sign out</button>
+
+    <button id="btnSignup" style="margin-top:8px;">
+      Create account
+    </button>
 
     <div id="status" class="msg"></div>
   </div>
 
   <script>
-    console.log("LOGIN VERSION", Date.now());
+    console.log("LOGIN VERSION", Date.now(), "origin=", location.origin, "href=", location.href);
 
     // CONFIG
     const SUPABASE_URL = "https://ytwwcrhtcsdpqeualnsx.supabase.co";
     const SUPABASE_KEY = "sb_publishable_QdZJOKCMMhOa9Xgb1ab-ew_ZJFeVncA";
 
-    const supabaseClient = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
+    // Use ONE global client if already created elsewhere
+    const supabaseClient = window.sb || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+      },
+    });
+    window.sb = supabaseClient;
 
     const $ = (id) => document.getElementById(id);
     const statusEl = $("status");
@@ -97,8 +109,30 @@
       statusEl.className = "msg " + (success ? "ok" : "err");
     }
 
+    function readReturnTo() {
+      let returnTo = null;
+      try {
+        returnTo = sessionStorage.getItem("returnTo");
+        if (returnTo) sessionStorage.removeItem("returnTo");
+      } catch { }
+
+      // fallback
+      if (!returnTo) returnTo = "index.html";
+
+      // never loop back to login
+      if (returnTo.includes("login.html")) returnTo = "index.html";
+
+      return returnTo;
+    }
+
+    function absoluteUrl(maybeRelative) {
+      // makes sure we stay on same origin/folder
+      return new URL(maybeRelative, location.href).toString();
+    }
+
     async function refreshStatus() {
       const { data, error } = await supabaseClient.auth.getSession();
+      console.log("getSession()", { data, error });
 
       if (error) {
         setMessage("Session error: " + error.message);
@@ -121,31 +155,93 @@
         return;
       }
 
-      const { error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
+      // 1) Sign in
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (error) {
         setMessage("Login error: " + error.message);
         return;
       }
 
-      const returnTo = sessionStorage.getItem("returnTo") || "index.html";
-      sessionStorage.removeItem("returnTo");
+      // 2) Check approval status in DB (profiles)
+      const userId = data?.user?.id;
+      if (!userId) {
+        await supabaseClient.auth.signOut().catch(() => { });
+        setMessage("Login error: missing user id.");
+        return;
+      }
+
+      const { data: prof, error: profErr } = await supabaseClient
+        .from("profiles")
+        .select("status")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profErr) {
+        // IMPORTANT: fail closed
+        await supabaseClient.auth.signOut().catch(() => { });
+        setMessage("Account check failed (RLS/table). Contact support.");
+        return;
+      }
+
+      const status = (prof?.status || "pending").toLowerCase();
+
+      if (status !== "active") {
+        await supabaseClient.auth.signOut().catch(() => { });
+        setMessage(
+          status === "pending"
+            ? "Account created. Awaiting approval."
+            : "Account not active. Please contact support.",
+          false
+        );
+        return;
+      }
+
+      // 3) OK -> redirect
+      let returnTo = "index.html";
+      try {
+        const v = sessionStorage.getItem("returnTo");
+        if (v) {
+          returnTo = v;
+          sessionStorage.removeItem("returnTo");
+        }
+      } catch { }
+
+      setMessage("✔ Approved. Redirecting...", true);
       window.location.replace(returnTo);
+    });
+
+    $("btnSignup").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+
+      if (!email || !password) {
+        setMessage("Please enter email and password.");
+        return;
+      }
+
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      console.log("signUp()", { data, error });
+
+      if (error) {
+        setMessage("Signup error: " + error.message, false);
+        return;
+      }
+
+      setMessage("Account created. Awaiting approval (and/or email confirmation).", false);
     });
 
     $("btnLogout").addEventListener("click", async () => {
       const { error } = await supabaseClient.auth.signOut();
+      console.log("signOut()", { error });
 
       if (error) {
-        setMessage("Logout error: " + error.message);
-      } else {
-        setMessage("Logged out.");
+        setMessage("Logout error: " + error.message, false);
+        return;
       }
 
-
+      setMessage("Logged out.", true);
+      await refreshStatus();
     });
 
     refreshStatus();
