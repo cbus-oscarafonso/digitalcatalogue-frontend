@@ -21,7 +21,7 @@
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+  <script src="supabase-client.js"></script>
   <!-- Login guard -->
   <script src="auth-guard.js"></script>
 
@@ -50,7 +50,6 @@
       </a>
 
       <a href="client-area.html" class="clientBtn" id="clientAreaLink" title="Client area" aria-label="Client area">
-
         <span class="clientIcon" aria-hidden="true">
           <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M12 0
@@ -66,12 +65,10 @@
           </svg>
         </span>
 
-        <span class="clientText" id="clientAreaText">
-          Client area
-        </span>
-
+        <span class="clientText" id="clientAreaText">Client area</span>
       </a>
-      <button class="clientBtn" id="btnLogout" title="Sign out" aria-label="Sign out">
+
+      <button class="clientBtn" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">
         Sign out
       </button>
     </div>
@@ -151,7 +148,6 @@
 
   <!-- ===== Review Order Modal (hidden by default) ===== -->
   <div id="orderModal" class="modalOverlay" hidden>
-    <!-- este overlay serve para clicar fora e fechar -->
     <div class="modalBackdrop" data-close="1"></div>
 
     <div class="modalPanel" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
@@ -160,7 +156,6 @@
       </div>
 
       <div class="modalBody">
-        <!-- “cópia” do carrinho, mas maior -->
         <div class="cart cartModal">
           <div class="cartHeader">
             <div class="colPN">P/N</div>
@@ -181,31 +176,31 @@
     </div>
   </div>
 
- <script>
-  (async () => {
-    const session = await window.requireAuth("login.html");
-    if (!session) return;
+  <script>
+    (async () => {
+      const session = await window.requireAuth("login.html");
+      if (!session) return;
 
-    window.__session = session;
+      window.__session = session;
 
-    // 🔹 Substituir texto do botão Client area pelo nome do utilizador
-    const clientText = document.getElementById("clientAreaText");
-    if (clientText && session.user?.email) {
-      const shortName = session.user.email.split("@")[0];
-      clientText.textContent = shortName;
-    }
+      // Put user info inside the Client area button text (keep it short)
+      const clientText = document.getElementById("clientAreaText");
+      if (clientText) {
+        const email = session.user?.email || "";
+        clientText.textContent = email ? email.split("@")[0] : "Client area";
+      }
 
-    const v = Date.now();
+      const v = Date.now();
 
-    const app = document.createElement("script");
-    app.src = "app.js?v=" + v;
-    document.body.appendChild(app);
+      const app = document.createElement("script");
+      app.src = "app.js?v=" + v;
+      document.body.appendChild(app);
 
-    const logout = document.createElement("script");
-    logout.src = "logout.js?v=" + v;
-    document.body.appendChild(logout);
-  })();
-</script>
+      const logout = document.createElement("script");
+      logout.src = "logout.js?v=" + v;
+      document.body.appendChild(logout);
+    })();
+  </script>
 
 </body>
 

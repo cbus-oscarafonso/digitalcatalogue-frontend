@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login – Digital Catalogue</title>
 
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
 
   <style>
     body {
@@ -28,9 +28,7 @@
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     }
 
-    h2 {
-      margin-top: 0;
-    }
+    h2 { margin-top: 0; }
 
     input {
       width: 100%;
@@ -53,19 +51,14 @@
       word-break: break-word;
     }
 
-    .ok {
-      color: green;
-    }
-
-    .err {
-      color: red;
-    }
+    .ok { color: green; }
+    .err { color: red; }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <h2>Login</h2>
+    <h2 id="formTitle">Login</h2>
 
     <label>Email</label>
     <input id="email" type="email" autocomplete="email" />
@@ -73,131 +66,43 @@
     <label>Password</label>
     <input id="password" type="password" autocomplete="current-password" />
 
-    <button id="btnLogin">Sign in</button>
-    <button id="btnLogout" style="margin-top:8px;">Sign out</button>
+    <!-- Company field (signup only) -->
+    <label id="companyLabel" style="display:none;">Company Name</label>
+    <input id="companyName" type="text" style="display:none;" />
 
-    <button id="btnSignup" style="margin-top:8px;">
+    <button id="btnLogin" type="button">Sign in</button>
+    <button id="btnSignup" type="button" style="margin-top:8px;">
       Create account
+    </button>
+    <button id="btnLogout" type="button" style="margin-top:8px;">
+      Sign out
     </button>
 
     <div id="status" class="msg"></div>
   </div>
 
   <script>
-    console.log("LOGIN VERSION", Date.now(), "origin=", location.origin, "href=", location.href);
-
-    // CONFIG
-    const SUPABASE_URL = "https://ytwwcrhtcsdpqeualnsx.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_QdZJOKCMMhOa9Xgb1ab-ew_ZJFeVncA";
-
-    // Use ONE global client if already created elsewhere
-    const supabaseClient = window.sb || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storage: window.localStorage,
-      },
-    });
-    window.sb = supabaseClient;
-
+    const sb = window.sb;
     const $ = (id) => document.getElementById(id);
     const statusEl = $("status");
+
+    const companyLabel = $("companyLabel");
+    const companyInput = $("companyName");
+    const formTitle = $("formTitle");
+
+    let mode = "login";
 
     function setMessage(text, success = false) {
       statusEl.textContent = text;
       statusEl.className = "msg " + (success ? "ok" : "err");
     }
 
+    if (!sb) {
+      console.error("supabase-client.js not loaded (window.sb missing)");
+      setMessage("Supabase client missing. Check supabase-client.js.", false);
+    }
+
     function readReturnTo() {
-      let returnTo = null;
-      try {
-        returnTo = sessionStorage.getItem("returnTo");
-        if (returnTo) sessionStorage.removeItem("returnTo");
-      } catch { }
-
-      // fallback
-      if (!returnTo) returnTo = "index.html";
-
-      // never loop back to login
-      if (returnTo.includes("login.html")) returnTo = "index.html";
-
-      return returnTo;
-    }
-
-    function absoluteUrl(maybeRelative) {
-      // makes sure we stay on same origin/folder
-      return new URL(maybeRelative, location.href).toString();
-    }
-
-    async function refreshStatus() {
-      const { data, error } = await supabaseClient.auth.getSession();
-      console.log("getSession()", { data, error });
-
-      if (error) {
-        setMessage("Session error: " + error.message);
-        return;
-      }
-
-      if (data.session) {
-        setMessage("✔ Logged in as " + data.session.user.email, true);
-      } else {
-        setMessage("Not authenticated");
-      }
-    }
-
-    $("btnLogin").addEventListener("click", async () => {
-      const email = $("email").value.trim();
-      const password = $("password").value;
-
-      if (!email || !password) {
-        setMessage("Please enter email and password.");
-        return;
-      }
-
-      // 1) Sign in
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        setMessage("Login error: " + error.message);
-        return;
-      }
-
-      // 2) Check approval status in DB (profiles)
-      const userId = data?.user?.id;
-      if (!userId) {
-        await supabaseClient.auth.signOut().catch(() => { });
-        setMessage("Login error: missing user id.");
-        return;
-      }
-
-      const { data: prof, error: profErr } = await supabaseClient
-        .from("profiles")
-        .select("status")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (profErr) {
-        // IMPORTANT: fail closed
-        await supabaseClient.auth.signOut().catch(() => { });
-        setMessage("Account check failed (RLS/table). Contact support.");
-        return;
-      }
-
-      const status = (prof?.status || "pending").toLowerCase();
-
-      if (status !== "active") {
-        await supabaseClient.auth.signOut().catch(() => { });
-        setMessage(
-          status === "pending"
-            ? "Account created. Awaiting approval."
-            : "Account not active. Please contact support.",
-          false
-        );
-        return;
-      }
-
-      // 3) OK -> redirect
       let returnTo = "index.html";
       try {
         const v = sessionStorage.getItem("returnTo");
@@ -205,46 +110,154 @@
           returnTo = v;
           sessionStorage.removeItem("returnTo");
         }
-      } catch { }
+      } catch {}
 
-      setMessage("✔ Approved. Redirecting...", true);
-      window.location.replace(returnTo);
-    });
+      if (String(returnTo).includes("login.html")) returnTo = "index.html";
+      return returnTo;
+    }
 
-    $("btnSignup").addEventListener("click", async () => {
+    (function showAuthGuardMessage() {
+      let reason = null;
+      try {
+        reason = sessionStorage.getItem("authError");
+        if (reason) sessionStorage.removeItem("authError");
+      } catch {}
+
+      if (reason === "pending") {
+        setMessage("Account created. Awaiting approval.", false);
+      } else if (reason === "profile_missing") {
+        setMessage("Account exists but profile is missing. Please contact support.", false);
+      } else if (reason === "blocked") {
+        setMessage("Account not active. Please contact support.", false);
+      }
+    })();
+
+    async function checkProfileStatusOrFail(userId) {
+      const { data, error } = await sb
+        .from("profiles")
+        .select("status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) return { ok: false, reason: "rls" };
+      if (!data) return { ok: false, reason: "profile_missing" };
+
+      const status = String(data.status || "").toLowerCase();
+      if (status !== "active") return { ok: false, reason: status };
+
+      return { ok: true };
+    }
+
+    function switchToSignup() {
+      mode = "signup";
+      formTitle.textContent = "Create Account";
+      companyLabel.style.display = "block";
+      companyInput.style.display = "block";
+    }
+
+    function switchToLogin() {
+      mode = "login";
+      formTitle.textContent = "Login";
+      companyLabel.style.display = "none";
+      companyInput.style.display = "none";
+    }
+
+    $("btnLogin").addEventListener("click", async () => {
+      if (!sb) return;
+
+      if (mode === "signup") {
+        switchToLogin();
+        return;
+      }
+
       const email = $("email").value.trim();
       const password = $("password").value;
 
       if (!email || !password) {
-        setMessage("Please enter email and password.");
+        setMessage("Please enter email and password.", false);
         return;
       }
 
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
-      console.log("signUp()", { data, error });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        setMessage("Login error: " + error.message, false);
+        return;
+      }
+
+      const userId = data?.user?.id;
+      const chk = await checkProfileStatusOrFail(userId);
+
+      if (!chk.ok) {
+        await sb.auth.signOut().catch(() => {});
+
+        if (chk.reason === "pending") {
+          setMessage("Account created. Awaiting approval.", false);
+        } else if (chk.reason === "profile_missing") {
+          setMessage("Account exists but profile is missing. Please contact support.", false);
+        } else {
+          setMessage("Account not active. Please contact support.", false);
+        }
+        return;
+      }
+
+      setMessage("✔ Approved. Redirecting…", true);
+      window.location.replace(readReturnTo());
+    });
+
+    $("btnSignup").addEventListener("click", async () => {
+      if (!sb) return;
+
+      if (mode === "login") {
+        switchToSignup();
+        return;
+      }
+
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      const companyName = companyInput.value.trim();
+
+      if (!email || !password || !companyName) {
+        setMessage("Please enter email, password and company name.", false);
+        return;
+      }
+
+      const { data, error } = await sb.auth.signUp({ email, password });
 
       if (error) {
         setMessage("Signup error: " + error.message, false);
         return;
       }
 
-      setMessage("Account created. Awaiting approval (and/or email confirmation).", false);
+      const userId = data?.user?.id;
+
+      if (userId) {
+        // Wait briefly to ensure trigger completed
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const { error: updError } = await sb
+          .from("profiles")
+          .update({ requested_customer_name: companyName })
+          .eq("user_id", userId);
+
+        if (updError) {
+          console.error("Profile update failed:", updError);
+        }
+      }
+
+      setMessage("Account created. Awaiting approval.", false);
+      switchToLogin();
     });
 
     $("btnLogout").addEventListener("click", async () => {
-      const { error } = await supabaseClient.auth.signOut();
-      console.log("signOut()", { error });
-
-      if (error) {
-        setMessage("Logout error: " + error.message, false);
-        return;
-      }
-
+      if (!sb) return;
+      await sb.auth.signOut();
       setMessage("Logged out.", true);
-      await refreshStatus();
     });
 
-    refreshStatus();
+    $("password").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") $("btnLogin").click();
+    });
   </script>
 </body>
 

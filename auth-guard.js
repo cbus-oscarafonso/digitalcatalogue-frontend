@@ -1,79 +1,123 @@
 // auth-guard.js
-const SUPABASE_URL = "https://ytwwcrhtcsdpqeualnsx.supabase.co";
-const SUPABASE_KEY = "sb_publishable_QdZJOKCMMhOa9Xgb1ab-ew_ZJFeVncA";
-
-window.sb = window.sb || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-async function getMyProfile() {
-  // returns { data, error }
-  return await window.sb
-    .from("profiles")
-    .select("status, customer_id, role")
-    .eq("user_id", (await window.sb.auth.getUser()).data.user?.id || "")
-    .maybeSingle();
-}
-
-function setReturnTo() {
-  const returnTo = location.pathname.split("/").pop() + location.hash;
-  try { sessionStorage.setItem("returnTo", returnTo); } catch {}
-}
-
-function redirectLogin(reason, redirectTo) {
-  try { sessionStorage.setItem("authError", reason); } catch {}
-  setReturnTo();
-  window.location.replace(redirectTo);
-}
-
 window.requireAuth = async function requireAuth(redirectTo = "login.html") {
+  const returnTo = location.pathname.split("/").pop() + location.hash;
+
+  // Safety: if Supabase client isn't ready, fail closed
+  if (!window.sb || !window.sb.auth) {
+    try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+    window.location.replace(redirectTo);
+    return null;
+  }
+
   const { data, error } = await window.sb.auth.getSession();
 
   if (error || !data.session) {
-    redirectLogin("no_session", redirectTo);
+    try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+    window.location.replace(redirectTo);
     return null;
   }
 
-  // ✅ session exists -> check profile status
-  const { data: prof, error: perr } = await window.sb
-    .from("profiles")
-    .select("status, customer_id")
-    .eq("user_id", data.session.user.id)
-    .maybeSingle();
+  // ✅ NEW: approval gate via profiles.status
+  try {
+    const userId = data.session.user?.id;
 
-  // If no profile row, treat as pending (should be rare now due to trigger)
-  if (perr || !prof) {
-    redirectLogin("pending", redirectTo);
+    const { data: prof, error: pErr } = await window.sb
+      .from("profiles")
+      .select("status")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (pErr) {
+      // Treat as blocked (RLS/policy etc.)
+      try { sessionStorage.setItem("authError", "blocked"); } catch {}
+      try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+      await window.sb.auth.signOut().catch(() => {});
+      window.location.replace(redirectTo);
+      return null;
+    }
+
+    if (!prof) {
+      // Profile row missing (or hidden)
+      try { sessionStorage.setItem("authError", "profile_missing"); } catch {}
+      try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+      await window.sb.auth.signOut().catch(() => {});
+      window.location.replace(redirectTo);
+      return null;
+    }
+
+    const status = String(prof.status || "").toLowerCase();
+    if (status !== "active") {
+      try { sessionStorage.setItem("authError", status || "blocked"); } catch {}
+      try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+      await window.sb.auth.signOut().catch(() => {});
+      window.location.replace(redirectTo);
+      return null;
+    }
+  } catch {
+    // Fail closed if anything unexpected happens
+    try { sessionStorage.setItem("authError", "blocked"); } catch {}
+    try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+    await window.sb.auth.signOut().catch(() => {});
+    window.location.replace(redirectTo);
     return null;
   }
 
-  const status = String(prof.status || "").toLowerCase();
-
-  if (status !== "active" || !prof.customer_id) {
-    // pending / blocked / missing customer
-    redirectLogin(status === "pending" ? "pending" : "blocked", redirectTo);
-    return null;
-  }
-
-  // ✅ all good → show UI
+  // sessão OK + aprovado
   document.documentElement.style.visibility = "visible";
   return data.session;
 };
 
-// BFCache protection: re-check when coming back via back/forward cache
-window.addEventListener("pageshow", async () => {
-  const { data } = await window.sb.auth.getSession();
-  if (!data.session) {
-    redirectLogin("no_session", "login.html");
+// Handle BFCache (back/forward)
+window.addEventListener("pageshow", async (e) => {
+  if (!e.persisted) return;
+
+  const returnTo = location.pathname.split("/").pop() + location.hash;
+
+  if (!window.sb || !window.sb.auth) {
+    try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+    window.location.replace("login.html");
     return;
   }
 
-  const { data: prof } = await window.sb
-    .from("profiles")
-    .select("status, customer_id")
-    .eq("user_id", data.session.user.id)
-    .maybeSingle();
-
-  const status = String(prof?.status || "").toLowerCase();
-  if (!prof || status !== "active" || !prof.customer_id) {
-    redirectLogin(status === "pending" ? "pending" : "blocked", "login.html");
+  const { data } = await window.sb.auth.getSession();
+  if (!data.session) {
+    try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+    window.location.replace("login.html");
+    return;
   }
+
+  // Re-run approval gate after BFCache restore
+  try {
+    const userId = data.session.user?.id;
+
+    const { data: prof } = await window.sb
+      .from("profiles")
+      .select("status")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const status = String(prof?.status || "").toLowerCase();
+    if (!prof) {
+      try { sessionStorage.setItem("authError", "profile_missing"); } catch {}
+      try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+      await window.sb.auth.signOut().catch(() => {});
+      window.location.replace("login.html");
+      return;
+    }
+    if (status !== "active") {
+      try { sessionStorage.setItem("authError", status || "blocked"); } catch {}
+      try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+      await window.sb.auth.signOut().catch(() => {});
+      window.location.replace("login.html");
+      return;
+    }
+  } catch {
+    try { sessionStorage.setItem("authError", "blocked"); } catch {}
+    try { sessionStorage.setItem("returnTo", returnTo); } catch {}
+    await window.sb.auth.signOut().catch(() => {});
+    window.location.replace("login.html");
+    return;
+  }
+
+  document.documentElement.style.visibility = "visible";
 });
