@@ -23,6 +23,20 @@
       .replaceAll("'", "&#039;");
   }
 
+  function makeCustomerCode(name) {
+    // slug simples, previsível e curto
+    const base = String(name || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 28) || "CUSTOMER";
+
+    // sufixo pequeno para reduzir colisões
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `${base}_${suffix}`;
+  }
+
   // 0) Auth gate (session + active). Role gate is here:
   const session = await requireAuth("login.html");
   if (!session) return;
@@ -30,7 +44,7 @@
   const myUserId = session.user.id;
   whoEl.textContent = `Logged in as ${session.user.email || myUserId}`;
 
-  // Ensure admin role (extra safety; auth-guard checks active but not role)
+  // Ensure admin role (extra safety)
   const { data: myProf, error: myProfErr } = await sb
     .from("profiles")
     .select("role,status")
@@ -48,9 +62,10 @@
 
   async function loadCustomers() {
     customersSelect.innerHTML = `<option value="">Loading…</option>`;
+
     const { data, error } = await sb
       .from("customers")
-      .select("id,name")
+      .select("id,name,code")
       .order("name", { ascending: true });
 
     if (error) {
@@ -61,7 +76,8 @@
 
     const opts = [`<option value="">— Select existing customer —</option>`];
     for (const c of data || []) {
-      opts.push(`<option value="${esc(c.id)}">${esc(c.name ?? c.id)}</option>`);
+      const label = c.name ? `${c.name} (${c.code || "NO_CODE"})` : (c.code || c.id);
+      opts.push(`<option value="${esc(c.id)}">${esc(label)}</option>`);
     }
     customersSelect.innerHTML = opts.join("");
   }
@@ -111,10 +127,11 @@
     const selectedId = customersSelect.value;
 
     if (newName) {
-      // Create new customer
+      const code = makeCustomerCode(newName);
+
       const { data, error } = await sb
         .from("customers")
-        .insert([{ name: newName }])
+        .insert([{ name: newName, code }])
         .select("id")
         .single();
 
@@ -145,7 +162,7 @@
       .from("profiles")
       .update(payload)
       .eq("user_id", userId)
-      .eq("status", "pending"); // safety
+      .eq("status", "pending");
 
     if (error) throw new Error("Approving user failed: " + error.message);
   }
@@ -206,6 +223,7 @@
       // Refresh list (and customers in case we created a new one)
       await loadCustomers();
       await loadPending();
+      newCustomerName.value = "";
     } catch (err) {
       console.error(err);
       setMsg(String(err?.message || err), false);
