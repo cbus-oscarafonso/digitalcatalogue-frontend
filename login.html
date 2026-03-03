@@ -6,7 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login – Digital Catalogue</title>
 
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Your shared Supabase client (creates window.sb) -->
   <script src="supabase-client.js"></script>
 
   <style>
@@ -28,7 +31,9 @@
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     }
 
-    h2 { margin-top: 0; }
+    h2 {
+      margin-top: 0;
+    }
 
     input {
       width: 100%;
@@ -51,14 +56,19 @@
       word-break: break-word;
     }
 
-    .ok { color: green; }
-    .err { color: red; }
+    .ok {
+      color: green;
+    }
+
+    .err {
+      color: red;
+    }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <h2 id="formTitle">Login</h2>
+    <h2>Login</h2>
 
     <label>Email</label>
     <input id="email" type="email" autocomplete="email" />
@@ -66,30 +76,35 @@
     <label>Password</label>
     <input id="password" type="password" autocomplete="current-password" />
 
+    <!-- Signup-only fields -->
+    <label id="fullNameLabel" style="display:none;">Full Name</label>
+    <input id="fullName" type="text" style="display:none;" autocomplete="name" />
+
     <label id="companyLabel" style="display:none;">Company Name</label>
     <input id="companyName" type="text" style="display:none;" />
 
     <button id="btnLogin" type="button">Sign in</button>
+    <button id="btnLogout" type="button" style="margin-top:8px;">Sign out</button>
+
     <button id="btnSignup" type="button" style="margin-top:8px;">
       Create account
-    </button>
-    <button id="btnLogout" type="button" style="margin-top:8px;">
-      Sign out
     </button>
 
     <div id="status" class="msg"></div>
   </div>
 
   <script>
+    // --- REQUIRED: shared client from supabase-client.js ---
     const sb = window.sb;
     const $ = (id) => document.getElementById(id);
     const statusEl = $("status");
 
+    const fullNameLabel = $("fullNameLabel");
+    const fullNameInput = $("fullName");
     const companyLabel = $("companyLabel");
     const companyInput = $("companyName");
-    const formTitle = $("formTitle");
 
-    let mode = "login";
+    let signupMode = false;
 
     function setMessage(text, success = false) {
       statusEl.textContent = text;
@@ -101,6 +116,16 @@
       setMessage("Supabase client missing. Check supabase-client.js.", false);
     }
 
+    function setSignupMode(on) {
+      signupMode = !!on;
+
+      fullNameLabel.style.display = signupMode ? "block" : "none";
+      fullNameInput.style.display = signupMode ? "block" : "none";
+
+      companyLabel.style.display = signupMode ? "block" : "none";
+      companyInput.style.display = signupMode ? "block" : "none";
+    }
+
     function readReturnTo() {
       let returnTo = "index.html";
       try {
@@ -109,18 +134,20 @@
           returnTo = v;
           sessionStorage.removeItem("returnTo");
         }
-      } catch {}
+      } catch { }
 
+      // never loop back to login
       if (String(returnTo).includes("login.html")) returnTo = "index.html";
       return returnTo;
     }
 
+    // show message if we were blocked by auth-guard
     (function showAuthGuardMessage() {
       let reason = null;
       try {
         reason = sessionStorage.getItem("authError");
         if (reason) sessionStorage.removeItem("authError");
-      } catch {}
+      } catch { }
 
       if (reason === "pending") {
         setMessage("Account created. Awaiting approval.", false);
@@ -131,6 +158,22 @@
       }
     })();
 
+    async function refreshStatus() {
+      if (!sb) return;
+      const { data, error } = await sb.auth.getSession();
+
+      if (error) {
+        setMessage("Session error: " + error.message, false);
+        return;
+      }
+
+      if (data.session) {
+        setMessage("✔ Logged in as " + (data.session.user?.email || ""), true);
+      } else {
+        setMessage("Not authenticated", false);
+      }
+    }
+
     async function checkProfileStatusOrFail(userId) {
       const { data, error } = await sb
         .from("profiles")
@@ -138,7 +181,7 @@
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (error) return { ok: false, reason: "rls" };
+      if (error) return { ok: false, reason: "rls", detail: error.message };
       if (!data) return { ok: false, reason: "profile_missing" };
 
       const status = String(data.status || "").toLowerCase();
@@ -147,27 +190,8 @@
       return { ok: true };
     }
 
-    function switchToSignup() {
-      mode = "signup";
-      formTitle.textContent = "Create Account";
-      companyLabel.style.display = "block";
-      companyInput.style.display = "block";
-    }
-
-    function switchToLogin() {
-      mode = "login";
-      formTitle.textContent = "Login";
-      companyLabel.style.display = "none";
-      companyInput.style.display = "none";
-    }
-
     $("btnLogin").addEventListener("click", async () => {
-      if (!sb) return;
-
-      if (mode === "signup") {
-        switchToLogin();
-        return;
-      }
+      if (!sb) { setMessage("Supabase client missing. Check supabase-client.js.", false); return; }
 
       const email = $("email").value.trim();
       const password = $("password").value;
@@ -185,39 +209,54 @@
       }
 
       const userId = data?.user?.id;
+      if (!userId) {
+        await sb.auth.signOut().catch(() => { });
+        setMessage("Login error: missing user id.", false);
+        return;
+      }
+
       const chk = await checkProfileStatusOrFail(userId);
 
       if (!chk.ok) {
-        await sb.auth.signOut().catch(() => {});
+        await sb.auth.signOut().catch(() => { });
 
         if (chk.reason === "pending") {
           setMessage("Account created. Awaiting approval.", false);
         } else if (chk.reason === "profile_missing") {
           setMessage("Account exists but profile is missing. Please contact support.", false);
+        } else if (chk.reason === "blocked") {
+          setMessage("Account not active. Please contact support.", false);
+        } else if (chk.reason === "rls") {
+          setMessage("Account check failed (RLS/table). Contact support.", false);
         } else {
           setMessage("Account not active. Please contact support.", false);
         }
         return;
       }
 
+      const returnTo = readReturnTo();
       setMessage("✔ Approved. Redirecting…", true);
-      window.location.replace(readReturnTo());
+      window.location.replace(returnTo);
     });
 
     $("btnSignup").addEventListener("click", async () => {
-      if (!sb) return;
+      if (!sb) { setMessage("Supabase client missing. Check supabase-client.js.", false); return; }
 
-      if (mode === "login") {
-        switchToSignup();
+      // First click toggles signup mode (shows fields)
+      if (!signupMode) {
+        setSignupMode(true);
+        setMessage("Fill Full Name + Company Name, then click Create account again.", true);
         return;
       }
 
       const email = $("email").value.trim();
       const password = $("password").value;
+      const fullName = fullNameInput.value.trim();
       const companyName = companyInput.value.trim();
 
-      if (!email || !password || !companyName) {
-        setMessage("Please enter email, password and company name.", false);
+      // No blanks allowed
+      if (!email || !password || !fullName || !companyName) {
+        setMessage("Please enter email, password, full name and company name.", false);
         return;
       }
 
@@ -225,7 +264,10 @@
         email,
         password,
         options: {
-          data: { requested_customer_name: companyName }
+          data: {
+            full_name: fullName,
+            requested_customer_name: companyName
+          }
         }
       });
 
@@ -235,18 +277,33 @@
       }
 
       setMessage("Account created. Awaiting approval (and/or email confirmation).", false);
-      switchToLogin();
+
+      // reset UI back to login mode
+      setSignupMode(false);
+      fullNameInput.value = "";
+      companyInput.value = "";
     });
 
     $("btnLogout").addEventListener("click", async () => {
-      if (!sb) return;
-      await sb.auth.signOut();
+      if (!sb) { setMessage("Supabase client missing. Check supabase-client.js.", false); return; }
+
+      const { error } = await sb.auth.signOut();
+
+      if (error) {
+        setMessage("Logout error: " + error.message, false);
+        return;
+      }
+
       setMessage("Logged out.", true);
+      await refreshStatus();
     });
 
+    // Enter key submits login (only in login mode)
     $("password").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") $("btnLogin").click();
+      if (e.key === "Enter" && !signupMode) $("btnLogin").click();
     });
+
+    refreshStatus();
   </script>
 </body>
 

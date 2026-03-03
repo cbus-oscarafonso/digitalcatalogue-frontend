@@ -3,234 +3,178 @@
   const requireAuth = window.requireAuth;
   const $ = (id) => document.getElementById(id);
 
-  const msgEl = $("msg");
-  const whoEl = $("whoami");
-  const customersSelect = $("customersSelect");
-  const newCustomerName = $("newCustomerName");
-  const tbody = $("pendingTbody");
+  const pendingTbody = $("pendingTbody");
+  const activeTbody = $("activeTbody");
 
-  function setMsg(text, ok = false) {
-    msgEl.textContent = text || "";
-    msgEl.style.color = ok ? "green" : "#b91c1c";
-  }
+  let activeUsersData = [];
+  let currentSortKey = null;
+  let currentSortDir = "asc";
 
   function esc(s) {
     return String(s ?? "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+      .replaceAll(">", "&gt;");
   }
 
-  function makeCustomerCode(name) {
-    // slug simples, previsível e curto
-    const base = String(name || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "")
-      .slice(0, 28) || "CUSTOMER";
-
-    // sufixo pequeno para reduzir colisões
-    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-    return `${base}_${suffix}`;
+  function formatDate(d) {
+    if (!d) return "";
+    return new Date(d).toLocaleString();
   }
 
-  // 0) Auth gate (session + active). Role gate is here:
+  function makeDisplayName(fullName) {
+    const s = String(fullName || "").trim();
+    if (!s) return "";
+    const parts = s.split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    return parts[0] + " " + parts[parts.length - 1];
+  }
+
+  // Auth guard
   const session = await requireAuth("login.html");
   if (!session) return;
 
-  const myUserId = session.user.id;
-  whoEl.textContent = `Logged in as ${session.user.email || myUserId}`;
-
-  // Ensure admin role (extra safety)
-  const { data: myProf, error: myProfErr } = await sb
-    .from("profiles")
-    .select("role,status")
-    .eq("user_id", myUserId)
-    .maybeSingle();
-
-  if (myProfErr || !myProf || String(myProf.role) !== "admin" || String(myProf.status) !== "active") {
-    try { sessionStorage.setItem("authError", "blocked"); } catch {}
-    await sb.auth.signOut().catch(() => {});
-    window.location.replace("login.html");
-    return;
-  }
-
   document.documentElement.style.visibility = "visible";
 
-  async function loadCustomers() {
-    customersSelect.innerHTML = `<option value="">Loading…</option>`;
-
-    const { data, error } = await sb
-      .from("customers")
-      .select("id,name,code")
-      .order("name", { ascending: true });
-
-    if (error) {
-      customersSelect.innerHTML = `<option value="">(cannot load)</option>`;
-      setMsg("Failed to load customers (RLS or schema).", false);
-      return;
-    }
-
-    const opts = [`<option value="">— Select existing customer —</option>`];
-    for (const c of data || []) {
-      const label = c.name ? `${c.name} (${c.code || "NO_CODE"})` : (c.code || c.id);
-      opts.push(`<option value="${esc(c.id)}">${esc(label)}</option>`);
-    }
-    customersSelect.innerHTML = opts.join("");
-  }
-
+  // Load Pending
   async function loadPending() {
-    tbody.innerHTML = `<tr><td colspan="5">Loading…</td></tr>`;
-
     const { data, error } = await sb
       .from("profiles")
-      .select("user_id, requested_customer_name, status, created_at")
+      .select("user_id, requested_full_name, requested_email, requested_customer_name, created_at")
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
     if (error) {
-      tbody.innerHTML = `<tr><td colspan="5">Failed to load pending users.</td></tr>`;
-      setMsg("Failed to load pending profiles. Check admin SELECT policy on profiles.", false);
+      pendingTbody.innerHTML = `<tr><td colspan="4">Error loading.</td></tr>`;
       return;
     }
 
-    if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5">No pending users 🎉</td></tr>`;
-      setMsg("", true);
+    if (!data.length) {
+      pendingTbody.innerHTML = `<tr><td colspan="4">No pending users 🎉</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = data.map((p) => {
-      const created = p.created_at ? new Date(p.created_at).toLocaleString() : "";
-      return `
-        <tr data-user-id="${esc(p.user_id)}">
-          <td><span class="pill">pending</span></td>
-          <td class="mono">${esc(p.user_id)}</td>
-          <td>${esc(p.requested_customer_name || "")}</td>
-          <td class="small">${esc(created)}</td>
-          <td>
-            <div class="actions">
-              <button class="btn btn-primary" data-action="approve">Approve</button>
-              <button class="btn btn-danger" data-action="reject">Reject</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join("");
+    pendingTbody.innerHTML = data.map(p => `
+      <tr>
+        <td>
+          <strong>${esc(makeDisplayName(p.requested_full_name))}</strong><br>
+          <span class="small">${esc(p.requested_email)}</span><br>
+          <span class="mono small">${esc(p.user_id)}</span>
+        </td>
+        <td>${esc(p.requested_customer_name)}</td>
+        <td class="small">${formatDate(p.created_at)}</td>
+        <td>
+          <button class="btn btn-primary" onclick="approve('${p.user_id}')">Approve</button>
+          <button class="btn btn-danger" onclick="reject('${p.user_id}')">Reject</button>
+        </td>
+      </tr>
+    `).join("");
   }
 
-  async function ensureCustomerId() {
-    const newName = newCustomerName.value.trim();
-    const selectedId = customersSelect.value;
+  // Load Active
+  async function loadActive() {
+    const { data, error } = await sb
+      .from("profiles")
+      .select(`
+        user_id,
+        role,
+        requested_full_name,
+        requested_email,
+        customer_id,
+        approved_at,
+        approved_by,
+        created_at,
+        customers ( name, code )
+      `)
+      .eq("status", "active");
 
-    if (newName) {
-      const code = makeCustomerCode(newName);
-
-      const { data, error } = await sb
-        .from("customers")
-        .insert([{ name: newName, code }])
-        .select("id")
-        .single();
-
-      if (error) {
-        throw new Error("Creating customer failed: " + error.message);
-      }
-      return data.id;
+    if (error) {
+      activeTbody.innerHTML = `<tr><td colspan="8">Error loading.</td></tr>`;
+      return;
     }
 
-    if (!selectedId) {
-      throw new Error("Select an existing customer OR type a new customer name.");
+    activeUsersData = data.map(u => ({
+      user_id: u.user_id,
+      display_name: makeDisplayName(u.requested_full_name),
+      email: u.requested_email,
+      role: u.role,
+      customer_name: u.customers ? `${u.customers.name} (${u.customers.code})` : "",
+      created_at: u.created_at,
+      approved_at: u.approved_at,
+      approved_by: u.approved_by
+    }));
+
+    renderActive();
+  }
+
+  function renderActive() {
+    if (!activeUsersData.length) {
+      activeTbody.innerHTML = `<tr><td colspan="8">No active users.</td></tr>`;
+      return;
     }
 
-    return selectedId;
+    activeTbody.innerHTML = activeUsersData.map(u => `
+      <tr>
+        <td><strong>${esc(u.display_name)}</strong></td>
+        <td>${esc(u.email)}</td>
+        <td>${esc(u.role)}</td>
+        <td>${esc(u.customer_name)}</td>
+        <td class="small">${formatDate(u.created_at)}</td>
+        <td class="small">${formatDate(u.approved_at)}</td>
+        <td class="mono small">${esc(u.approved_by || "")}</td>
+        <td class="mono small">${esc(u.user_id)}</td>
+      </tr>
+    `).join("");
   }
 
-  async function approveUser(userId) {
-    const customerId = await ensureCustomerId();
+  function sortActive(key) {
+    if (currentSortKey === key) {
+      currentSortDir = currentSortDir === "asc" ? "desc" : "asc";
+    } else {
+      currentSortKey = key;
+      currentSortDir = "asc";
+    }
 
-    const payload = {
-      status: "active",
-      customer_id: customerId,
-      approved_at: new Date().toISOString(),
-      approved_by: myUserId
-    };
+    activeUsersData.sort((a, b) => {
+      const va = (a[key] || "").toString().toLowerCase();
+      const vb = (b[key] || "").toString().toLowerCase();
+      if (va < vb) return currentSortDir === "asc" ? -1 : 1;
+      if (va > vb) return currentSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
 
-    const { error } = await sb
-      .from("profiles")
-      .update(payload)
-      .eq("user_id", userId)
-      .eq("status", "pending");
-
-    if (error) throw new Error("Approving user failed: " + error.message);
+    renderActive();
   }
 
-  async function rejectUser(userId) {
-    const { error } = await sb
-      .from("profiles")
-      .update({
-        status: "rejected",
-        approved_at: new Date().toISOString(),
-        approved_by: myUserId
-      })
-      .eq("user_id", userId)
-      .eq("status", "pending");
+  document.querySelectorAll("th[data-key]").forEach(th => {
+    th.addEventListener("click", () => {
+      sortActive(th.dataset.key);
+    });
+  });
 
-    if (error) throw new Error("Reject failed: " + error.message);
-  }
-
-  // Events
-  $("btnRefresh").addEventListener("click", async () => {
-    setMsg("Refreshing…", true);
-    await loadCustomers();
+  // Approve / Reject exposed globally
+  window.approve = async function (userId) {
+    await sb.from("profiles").update({ status: "active" }).eq("user_id", userId);
     await loadPending();
-    setMsg("", true);
-  });
+    await loadActive();
+  };
 
-  $("btnLogout").addEventListener("click", async () => {
-    await sb.auth.signOut().catch(() => {});
+  window.reject = async function (userId) {
+    await sb.from("profiles").update({ status: "rejected" }).eq("user_id", userId);
+    await loadPending();
+    await loadActive();
+  };
+
+  $("btnRefresh").onclick = async () => {
+    await loadPending();
+    await loadActive();
+  };
+
+  $("btnLogout").onclick = async () => {
+    await sb.auth.signOut();
     window.location.replace("login.html");
-  });
+  };
 
-  $("btnClearNew").addEventListener("click", () => {
-    newCustomerName.value = "";
-    setMsg("New customer cleared.", true);
-  });
-
-  tbody.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button[data-action]");
-    if (!btn) return;
-
-    const tr = btn.closest("tr[data-user-id]");
-    if (!tr) return;
-
-    const userId = tr.getAttribute("data-user-id");
-    const action = btn.getAttribute("data-action");
-
-    try {
-      setMsg("Working…", true);
-
-      if (action === "approve") {
-        await approveUser(userId);
-        setMsg("Approved.", true);
-      } else if (action === "reject") {
-        await rejectUser(userId);
-        setMsg("Rejected.", true);
-      }
-
-      // Refresh list (and customers in case we created a new one)
-      await loadCustomers();
-      await loadPending();
-      newCustomerName.value = "";
-    } catch (err) {
-      console.error(err);
-      setMsg(String(err?.message || err), false);
-    }
-  });
-
-  // Initial load
-  await loadCustomers();
   await loadPending();
+  await loadActive();
 })();
