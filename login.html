@@ -66,7 +66,6 @@
     <label>Password</label>
     <input id="password" type="password" autocomplete="current-password" />
 
-    <!-- Company field (signup only) -->
     <label id="companyLabel" style="display:none;">Company Name</label>
     <input id="companyName" type="text" style="display:none;" />
 
@@ -222,30 +221,20 @@
         return;
       }
 
-      const { data, error } = await sb.auth.signUp({ email, password });
+      const { error } = await sb.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { requested_customer_name: companyName }
+        }
+      });
 
       if (error) {
         setMessage("Signup error: " + error.message, false);
         return;
       }
 
-      const userId = data?.user?.id;
-
-      if (userId) {
-        // Wait briefly to ensure trigger completed
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        const { error: updError } = await sb
-          .from("profiles")
-          .update({ requested_customer_name: companyName })
-          .eq("user_id", userId);
-
-        if (updError) {
-          console.error("Profile update failed:", updError);
-        }
-      }
-
-      setMessage("Account created. Awaiting approval.", false);
+      setMessage("Account created. Awaiting approval (and/or email confirmation).", false);
       switchToLogin();
     });
 
