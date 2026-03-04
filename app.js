@@ -1,5 +1,47 @@
 const $ = (id) => document.getElementById(id);
 
+/* =========================================================
+   [CHANGE #1] Admin Area button visibility + navigation
+   - Looks for #btnAdminArea on index.html
+   - Hidden by default
+   - Shown only if session exists AND profiles.role='admin' AND profiles.status='active'
+   - Click -> admin-approval.html
+   ========================================================= */
+(async function setupAdminAreaButton() {
+  try {
+    const btn = document.getElementById("btnAdminArea");
+    if (!btn) return;                 // index.html might not have it yet
+    btn.style.display = "none";       // default hidden
+
+    if (!window.sb || !window.sb.auth) return;
+
+    const { data, error } = await window.sb.auth.getSession();
+    if (error || !data?.session) return;
+
+    const userId = data.session.user?.id;
+    if (!userId) return;
+
+    const { data: prof, error: pErr } = await window.sb
+      .from("profiles")
+      .select("role,status")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (pErr || !prof) return;
+
+    const role = String(prof.role || "").toLowerCase();
+    const status = String(prof.status || "").toLowerCase();
+
+    if (role === "admin" && status === "active") {
+      btn.style.display = "inline-block";
+      btn.addEventListener("click", () => {
+        window.location.href = "admin-approval.html";
+      });
+    }
+  } catch (e) {
+    console.warn("setupAdminAreaButton failed:", e);
+  }
+})();
 
 (async () => {
   const { data, error } = await window.sb.auth.getSession();
@@ -713,9 +755,6 @@ function buildHotspotToPosMap(doc) {
   return map;
 }
 
-
-
-
 function extractHotspotNFromAttr(attr) {
   const m = String(attr || '').match(/ShowHotSpot\(evt,\s*(?:'|&apos;)?(\d+)(?:'|&apos;)?\)/);
   if (!m) return null;
@@ -738,7 +777,6 @@ function findHotspotNOnAncestors(el) {
   }
   return null;
 }
-
 
 function extractHotspotNFromId(id) {
   const m = String(id || '').match(/hotspot[._-](\d+)/i);
@@ -778,7 +816,6 @@ function findHotspotNByPoint(doc, clientX, clientY) {
   return best;
 }
 
-
 function wireBridge() {
   const obj = $('svgObj');
   const doc = obj.contentDocument;
@@ -812,17 +849,12 @@ function wireBridge() {
   // NEW: build hotspot -> POS mapping using callout numbers
   state.hotspotToPos = buildHotspotToPosMap(doc);
 
-
-
   doc.addEventListener('mouseover', (ev) => {
     const n = findHotspotNOnAncestors(ev.target);
     if (n !== null) state.lastHotspotN = n;
   }, true);
 
   doc.addEventListener('click', (ev) => {
-
-
-
     const directN = findHotspotNOnAncestors(ev.target);
     const pointN = (directN === null && (state.lastHotspotN == null)) ? findHotspotNByPoint(doc, ev.clientX, ev.clientY) : null;
     const n = (directN !== null) ? directN : ((state.lastHotspotN != null) ? state.lastHotspotN : pointN);
@@ -961,7 +993,6 @@ async function main() {
   window.addEventListener('hashchange', () => route().catch(() => { }));
   await route().catch(() => { });
 }
-
 
 main();
 

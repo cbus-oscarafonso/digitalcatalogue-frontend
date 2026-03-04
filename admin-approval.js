@@ -50,8 +50,8 @@
     return `${prefix}${suffix}`;
   }
 
-  // 0) Auth gate
-  const session = await requireAuth("login.html");
+  // 0) Auth gate (DO NOT reveal page yet)
+  const session = await requireAuth("login.html", { reveal: false });
   if (!session) return;
 
   const myUserId = session.user.id;
@@ -71,7 +71,9 @@
     return;
   }
 
-  document.documentElement.style.visibility = "visible";
+  // ✅ ONLY NOW reveal the page (prevents flash for non-admins)
+  if (window.revealPage) window.revealPage();
+  else document.documentElement.style.visibility = "visible"; // fallback (shouldn't be needed)
 
   async function loadCustomers() {
     customersSelect.innerHTML = `<option value="">Loading…</option>`;

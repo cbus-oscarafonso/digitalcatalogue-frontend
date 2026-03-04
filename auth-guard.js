@@ -1,5 +1,11 @@
 // auth-guard.js
-window.requireAuth = async function requireAuth(redirectTo = "login.html") {
+
+window.revealPage = function revealPage() {
+  document.documentElement.style.visibility = "visible";
+};
+
+window.requireAuth = async function requireAuth(redirectTo = "login.html", opts = {}) {
+  const { reveal = true } = opts;
   const returnTo = location.pathname.split("/").pop() + location.hash;
 
   // Safety: if Supabase client isn't ready, fail closed
@@ -17,7 +23,7 @@ window.requireAuth = async function requireAuth(redirectTo = "login.html") {
     return null;
   }
 
-  // ✅ NEW: approval gate via profiles.status
+  // ✅ approval gate via profiles.status
   try {
     const userId = data.session.user?.id;
 
@@ -28,7 +34,6 @@ window.requireAuth = async function requireAuth(redirectTo = "login.html") {
       .maybeSingle();
 
     if (pErr) {
-      // Treat as blocked (RLS/policy etc.)
       try { sessionStorage.setItem("authError", "blocked"); } catch {}
       try { sessionStorage.setItem("returnTo", returnTo); } catch {}
       await window.sb.auth.signOut().catch(() => {});
@@ -37,7 +42,6 @@ window.requireAuth = async function requireAuth(redirectTo = "login.html") {
     }
 
     if (!prof) {
-      // Profile row missing (or hidden)
       try { sessionStorage.setItem("authError", "profile_missing"); } catch {}
       try { sessionStorage.setItem("returnTo", returnTo); } catch {}
       await window.sb.auth.signOut().catch(() => {});
@@ -54,7 +58,6 @@ window.requireAuth = async function requireAuth(redirectTo = "login.html") {
       return null;
     }
   } catch {
-    // Fail closed if anything unexpected happens
     try { sessionStorage.setItem("authError", "blocked"); } catch {}
     try { sessionStorage.setItem("returnTo", returnTo); } catch {}
     await window.sb.auth.signOut().catch(() => {});
@@ -63,7 +66,7 @@ window.requireAuth = async function requireAuth(redirectTo = "login.html") {
   }
 
   // sessão OK + aprovado
-  document.documentElement.style.visibility = "visible";
+  if (reveal) window.revealPage();
   return data.session;
 };
 
@@ -97,6 +100,7 @@ window.addEventListener("pageshow", async (e) => {
       .maybeSingle();
 
     const status = String(prof?.status || "").toLowerCase();
+
     if (!prof) {
       try { sessionStorage.setItem("authError", "profile_missing"); } catch {}
       try { sessionStorage.setItem("returnTo", returnTo); } catch {}
@@ -104,6 +108,7 @@ window.addEventListener("pageshow", async (e) => {
       window.location.replace("login.html");
       return;
     }
+
     if (status !== "active") {
       try { sessionStorage.setItem("authError", status || "blocked"); } catch {}
       try { sessionStorage.setItem("returnTo", returnTo); } catch {}
@@ -119,5 +124,6 @@ window.addEventListener("pageshow", async (e) => {
     return;
   }
 
-  document.documentElement.style.visibility = "visible";
+  // Não revelamos aqui automaticamente — cada página decide.
+  // A maioria das páginas chama requireAuth() ao carregar e isso revela.
 });
