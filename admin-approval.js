@@ -3,20 +3,57 @@
   const requireAuth = window.requireAuth;
   const $ = (id) => document.getElementById(id);
 
+  const sortIndicator = $("sortIndicator");
+
   const msgEl = $("msg");
   const whoEl = $("whoami");
+  const msgCreateCustomer = $("msgCreateCustomer");
+
+  const pendingDecisionPanel = $("pendingDecisionPanel");
+  const existingChoiceCard = $("existingChoiceCard");
+  const newChoiceCard = $("newChoiceCard");
+
   const customersSelect = $("customersSelect");
-  const newCustomerName = $("newCustomerName");
+  const customerSuggestDropdownPending = $("customerSuggestDropdownPending");
+  const newCustomerNamePending = $("newCustomerNamePending");
+  const customerNotesPending = $("customerNotesPending");
+  const countrySearchPending = $("countrySearchPending");
+  const countryDropdownPending = $("countryDropdownPending");
+
+  const newCustomerNameStandalone = $("newCustomerNameStandalone");
+  const customerNotesStandalone = $("customerNotesStandalone");
+  const countrySearchStandalone = $("countrySearchStandalone");
+  const countryDropdownStandalone = $("countryDropdownStandalone");
+
   const pendingTbody = $("pendingTbody");
   const activeTbody = $("activeTbody");
 
+  const existingCustomerSearchStandalone = $("existingCustomerSearchStandalone");
+  const existingCustomerDropdownStandalone = $("existingCustomerDropdownStandalone");
+  const existingCustomerDetailsStandalone = $("existingCustomerDetailsStandalone");
+  const existingCustomerCodeStandalone = $("existingCustomerCodeStandalone");
+  const existingCustomerNameStandalone = $("existingCustomerNameStandalone");
+  const existingCustomerCountryStandalone = $("existingCustomerCountryStandalone");
+  const existingCustomerNotesStandalone = $("existingCustomerNotesStandalone");
+  const btnEditExistingCustomerNotes = $("btnEditExistingCustomerNotes");
+  const btnCancelExistingCustomerNotes = $("btnCancelExistingCustomerNotes");
+
   let activeUsersData = [];
-  let sortKey = "display_name";
-  let sortDir = "asc";
+  let sortKey = "approved_at";
+  let sortDir = "desc";
+
+  let countriesData = [];
+  let customersData = [];
 
   function setMsg(text, ok = false) {
     msgEl.textContent = text || "";
     msgEl.style.color = ok ? "green" : "#b91c1c";
+  }
+
+  function setCreateCustomerMsg(text, ok = false) {
+    if (!msgCreateCustomer) return;
+    msgCreateCustomer.textContent = text || "";
+    msgCreateCustomer.style.color = ok ? "green" : "#b91c1c";
   }
 
   function esc(s) {
@@ -26,6 +63,20 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
+
+  function updateSortIndicator() {
+    const labelMap = {
+      approved_at: "Date of approval",
+      display_name: "User",
+      role: "Role",
+      customer_label: "Customer"
+    };
+
+    const arrow = sortDir === "asc" ? "↑" : "↓";
+    if (sortIndicator) {
+      sortIndicator.textContent = `Sorted by: ${labelMap[sortKey]} ${arrow}`;
+    }
   }
 
   function formatDate(d) {
@@ -41,7 +92,6 @@
     return parts[0] + " " + parts[parts.length - 1];
   }
 
-  // Customer code: 5 chars from name + 3 random
   function makeCustomerCode(name) {
     const cleaned = String(name || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     const prefixLen = 5;
@@ -50,34 +100,424 @@
     return `${prefix}${suffix}`;
   }
 
-  // 0) Auth gate (DO NOT reveal page yet)
-  const session = await requireAuth("login.html", { reveal: false });
-  if (!session) return;
-
-  const myUserId = session.user.id;
-  whoEl.textContent = `Logged in as ${session.user.email || myUserId}`;
-
-  // Ensure admin role (extra safety)
-  const { data: myProf, error: myProfErr } = await sb
-    .from("profiles")
-    .select("role,status")
-    .eq("user_id", myUserId)
-    .maybeSingle();
-
-  if (myProfErr || !myProf || String(myProf.role) !== "admin" || String(myProf.status) !== "active") {
-    try { sessionStorage.setItem("authError", "blocked"); } catch {}
-    await sb.auth.signOut().catch(() => {});
-    window.location.replace("login.html");
-    return;
+  function normalizeName(s) {
+    return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
   }
 
-  // ✅ ONLY NOW reveal the page (prevents flash for non-admins)
-  if (window.revealPage) window.revealPage();
-  else document.documentElement.style.visibility = "visible"; // fallback (shouldn't be needed)
+  function createCountryPicker(inputEl, dropdownEl) {
+    let selectedCode = "";
+    let filteredCountries = [];
+    let activeIndex = -1;
+    let enabled = true;
+
+    function render(query = "") {
+      const q = String(query || "").trim().toLowerCase();
+
+      filteredCountries = countriesData.filter(c => {
+        const code = String(c.code || "").toLowerCase();
+        const name = String(c.name || "").toLowerCase();
+        return !q || code.includes(q) || name.includes(q);
+      });
+
+      if (!filteredCountries.length) {
+        dropdownEl.innerHTML = `<div class="pickerEmpty">No countries found.</div>`;
+        activeIndex = -1;
+        return;
+      }
+
+      dropdownEl.innerHTML = filteredCountries.map((c, idx) => `
+        <div class="pickerOption ${idx === activeIndex ? "active" : ""}" data-idx="${idx}">
+          <div class="pickerCode">${esc(c.code)}</div>
+          <div class="pickerName">${esc(c.name)}</div>
+        </div>
+      `).join("");
+    }
+
+    function open() {
+      if (!enabled) return;
+      dropdownEl.classList.add("open");
+    }
+
+    function close() {
+      dropdownEl.classList.remove("open");
+      activeIndex = -1;
+    }
+
+    function clear() {
+      selectedCode = "";
+      inputEl.value = "";
+      activeIndex = -1;
+      render("");
+      close();
+    }
+
+    function setEnabled(v) {
+      enabled = !!v;
+      inputEl.disabled = !enabled;
+      if (!enabled) clear();
+    }
+
+    function getSelectedCode() {
+      return selectedCode;
+    }
+
+    function selectCountry(country) {
+      selectedCode = country.code;
+      inputEl.value = `${country.code}  ${country.name}`;
+      close();
+    }
+
+    function moveSelection(dir) {
+      if (!filteredCountries.length) return;
+      if (!dropdownEl.classList.contains("open")) open();
+
+      activeIndex += dir;
+      if (activeIndex < 0) activeIndex = filteredCountries.length - 1;
+      if (activeIndex >= filteredCountries.length) activeIndex = 0;
+
+      render(inputEl.value);
+      const activeEl = dropdownEl.querySelector(`.pickerOption[data-idx="${activeIndex}"]`);
+      if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
+    }
+
+    inputEl.addEventListener("focus", () => {
+      if (!enabled) return;
+      render(inputEl.value);
+      open();
+    });
+
+    inputEl.addEventListener("click", () => {
+      if (!enabled) return;
+      render(inputEl.value);
+      open();
+    });
+
+    inputEl.addEventListener("input", () => {
+      if (!enabled) return;
+      selectedCode = "";
+      activeIndex = -1;
+      render(inputEl.value);
+      open();
+    });
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (!enabled) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        moveSelection(1);
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        moveSelection(-1);
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (!dropdownEl.classList.contains("open")) return;
+        e.preventDefault();
+
+        if (activeIndex >= 0 && filteredCountries[activeIndex]) {
+          selectCountry(filteredCountries[activeIndex]);
+        } else if (filteredCountries.length === 1) {
+          selectCountry(filteredCountries[0]);
+        }
+        return;
+      }
+
+      if (e.key === "Escape") {
+        close();
+      }
+    });
+
+    dropdownEl.addEventListener("mousedown", (e) => {
+      const opt = e.target.closest(".pickerOption");
+      if (!opt) return;
+      const idx = Number(opt.getAttribute("data-idx"));
+      if (!Number.isNaN(idx) && filteredCountries[idx]) {
+        selectCountry(filteredCountries[idx]);
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (e.target !== inputEl && !dropdownEl.contains(e.target)) {
+        close();
+      }
+    });
+
+    return {
+      render,
+      clear,
+      setEnabled,
+      getSelectedCode
+    };
+  }
+
+  function createCustomerAutocomplete(inputEl, dropdownEl, onPicked) {
+    let selectedId = "";
+    let filteredCustomers = [];
+    let activeIndex = -1;
+    let enabled = true;
+
+    function render(query = "") {
+      const q = normalizeName(query);
+      filteredCustomers = customersData.filter(c => {
+        const name = normalizeName(c.name);
+        const code = String(c.code || "").toLowerCase();
+        return !q || name.includes(q) || code.includes(q);
+      }).slice(0, 8);
+
+      if (!filteredCustomers.length) {
+        dropdownEl.innerHTML = `<div class="pickerEmpty">No existing customers</div>`;
+        activeIndex = -1;
+        return;
+      }
+
+      dropdownEl.innerHTML = filteredCustomers.map((c, idx) => `
+        <div class="pickerOption ${idx === activeIndex ? "active" : ""}" data-idx="${idx}">
+          <div class="pickerCode">${esc(c.code)}</div>
+          <div class="pickerName">${esc(c.name)}</div>
+        </div>
+      `).join("");
+    }
+
+    function open() {
+      if (!enabled) return;
+      dropdownEl.classList.add("open");
+    }
+
+    function close() {
+      dropdownEl.classList.remove("open");
+      activeIndex = -1;
+    }
+
+    function clear() {
+      selectedId = "";
+      inputEl.value = "";
+      activeIndex = -1;
+      render("");
+      close();
+      if (onPicked) onPicked(null);
+    }
+
+    function getSelectedId() {
+      return selectedId;
+    }
+
+    function setEnabled(v) {
+      enabled = !!v;
+      inputEl.disabled = !enabled;
+      if (!enabled) clear();
+    }
+
+    function selectCustomer(customer) {
+      selectedId = customer.id;
+      inputEl.value = customer.name;
+      close();
+      if (onPicked) onPicked(customer);
+    }
+
+    function moveSelection(dir) {
+      if (!filteredCustomers.length) return;
+      if (!dropdownEl.classList.contains("open")) open();
+
+      activeIndex += dir;
+      if (activeIndex < 0) activeIndex = filteredCustomers.length - 1;
+      if (activeIndex >= filteredCustomers.length) activeIndex = 0;
+
+      render(inputEl.value);
+      const activeEl = dropdownEl.querySelector(`.pickerOption[data-idx="${activeIndex}"]`);
+      if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
+    }
+
+    inputEl.addEventListener("focus", () => {
+      if (!enabled) return;
+      render(inputEl.value);
+      open();
+    });
+
+    inputEl.addEventListener("click", () => {
+      if (!enabled) return;
+      render(inputEl.value);
+      open();
+    });
+
+    inputEl.addEventListener("input", () => {
+      if (!enabled) return;
+      selectedId = "";
+      render(inputEl.value);
+      open();
+      if (onPicked) onPicked(null);
+    });
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (!enabled) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        moveSelection(1);
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        moveSelection(-1);
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (!dropdownEl.classList.contains("open")) return;
+        e.preventDefault();
+        if (activeIndex >= 0 && filteredCustomers[activeIndex]) {
+          selectCustomer(filteredCustomers[activeIndex]);
+        } else if (filteredCustomers.length === 1) {
+          selectCustomer(filteredCustomers[0]);
+        }
+        return;
+      }
+
+      if (e.key === "Escape") {
+        close();
+      }
+    });
+
+    dropdownEl.addEventListener("mousedown", (e) => {
+      const opt = e.target.closest(".pickerOption");
+      if (!opt) return;
+      const idx = Number(opt.getAttribute("data-idx"));
+      if (!Number.isNaN(idx) && filteredCustomers[idx]) {
+        selectCustomer(filteredCustomers[idx]);
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (e.target !== inputEl && !dropdownEl.contains(e.target)) {
+        close();
+      }
+    });
+
+    return {
+      render,
+      clear,
+      setEnabled,
+      getSelectedId
+    };
+  }
+
+  const pendingCountryPicker = createCountryPicker(countrySearchPending, countryDropdownPending);
+  const standaloneCountryPicker = createCountryPicker(countrySearchStandalone, countryDropdownStandalone);
+
+  const pendingExistingCustomerPicker = createCustomerAutocomplete(customersSelect, customerSuggestDropdownPending, (customer) => {
+    if (customer) {
+      newCustomerNamePending.value = "";
+      customerNotesPending.value = "";
+      pendingCountryPicker.clear();
+    }
+    setPendingModeUI();
+  });
+
+  let selectedExistingStandaloneCustomer = null;
+  let existingStandaloneNotesEditMode = false;
+  let existingStandaloneOriginalNotes = "";
+
+  const existingStandaloneCustomerPicker = createCustomerAutocomplete(
+    existingCustomerSearchStandalone,
+    existingCustomerDropdownStandalone,
+    (customer) => {
+      selectedExistingStandaloneCustomer = customer || null;
+      existingStandaloneNotesEditMode = false;
+
+      if (!customer) {
+        existingCustomerDetailsStandalone.classList.add("hidden");
+        existingCustomerCodeStandalone.value = "";
+        existingCustomerNameStandalone.value = "";
+        existingCustomerCountryStandalone.value = "";
+        existingCustomerNotesStandalone.value = "";
+        existingCustomerNotesStandalone.disabled = true;
+        btnEditExistingCustomerNotes.textContent = "Edit notes";
+        btnCancelExistingCustomerNotes.classList.add("hidden");
+        return;
+      }
+
+      fillExistingStandaloneCustomerDetails(customer);
+    }
+  );
+
+  function setPendingModeUI() {
+    const existingSelected = !!pendingExistingCustomerPicker.getSelectedId() || !!customersSelect.value.trim();
+    const newName = newCustomerNamePending.value.trim();
+    const newMode = !!newName;
+
+    if (existingSelected) {
+      newChoiceCard.classList.add("is-disabled");
+      newCustomerNamePending.disabled = true;
+      customerNotesPending.disabled = true;
+      pendingCountryPicker.setEnabled(false);
+    } else {
+      newChoiceCard.classList.remove("is-disabled");
+      newCustomerNamePending.disabled = false;
+      customerNotesPending.disabled = !newMode;
+      pendingCountryPicker.setEnabled(newMode);
+    }
+
+    if (newMode) {
+      existingChoiceCard.classList.add("is-disabled");
+      pendingExistingCustomerPicker.setEnabled(false);
+    } else {
+      existingChoiceCard.classList.remove("is-disabled");
+      pendingExistingCustomerPicker.setEnabled(true);
+    }
+  }
+
+  function clearPendingChoice() {
+    pendingExistingCustomerPicker.clear();
+    newCustomerNamePending.value = "";
+    customerNotesPending.value = "";
+    pendingCountryPicker.clear();
+    setPendingModeUI();
+    setMsg("Pending approval choice cleared.", true);
+  }
+
+  function clearStandaloneCreate() {
+    newCustomerNameStandalone.value = "";
+    customerNotesStandalone.value = "";
+    standaloneCountryPicker.clear();
+
+    existingStandaloneCustomerPicker.clear();
+    selectedExistingStandaloneCustomer = null;
+    existingStandaloneOriginalNotes = "";
+    existingCustomerDetailsStandalone.classList.add("hidden");
+    existingCustomerCodeStandalone.value = "";
+    existingCustomerNameStandalone.value = "";
+    existingCustomerCountryStandalone.value = "";
+    existingCustomerNotesStandalone.value = "";
+    existingCustomerNotesStandalone.disabled = true;
+    btnEditExistingCustomerNotes.textContent = "Edit notes";
+    btnCancelExistingCustomerNotes.classList.add("hidden");
+
+    setCreateCustomerMsg("Standalone customer form cleared.", true);
+  }
+
+  async function loadCountries() {
+    const { data, error } = await sb
+      .from("countries")
+      .select("code,name")
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error("loadCountries error:", error);
+      setMsg("Failed to load countries: " + error.message, false);
+      return;
+    }
+
+    countriesData = data || [];
+    pendingCountryPicker.render("");
+    standaloneCountryPicker.render("");
+  }
 
   async function loadCustomers() {
-    customersSelect.innerHTML = `<option value="">Loading…</option>`;
-
     const { data, error } = await sb
       .from("customers")
       .select("id,name,code")
@@ -85,25 +525,167 @@
 
     if (error) {
       console.error("loadCustomers error:", error);
-      customersSelect.innerHTML = `<option value="">(cannot load)</option>`;
       setMsg("Failed to load customers: " + error.message, false);
       return;
     }
 
-    const opts = [`<option value="">— Select existing customer —</option>`];
-    for (const c of data || []) {
-      const label = c.name ? `${c.name} (${c.code || "NO_CODE"})` : (c.code || c.id);
-      opts.push(`<option value="${esc(c.id)}">${esc(label)}</option>`);
-    }
-    customersSelect.innerHTML = opts.join("");
+    customersData = data || [];
+    pendingExistingCustomerPicker.render("");
+    existingStandaloneCustomerPicker.render("");
   }
+
+  function checkCustomerDuplicate(name) {
+    const needle = normalizeName(name);
+    return customersData.some(c => normalizeName(c.name) === needle);
+  }
+
+  async function fetchCustomerFull(customerId) {
+    const { data, error } = await sb
+      .from("customers")
+      .select("id,name,code,country,notes")
+      .eq("id", customerId)
+      .single();
+
+    if (error) throw new Error("Failed to load customer details: " + error.message);
+    return data;
+  }
+
+  function setExistingStandaloneNotesEditMode(editing) {
+    existingStandaloneNotesEditMode = !!editing;
+
+    existingCustomerNotesStandalone.disabled = !editing;
+    btnEditExistingCustomerNotes.textContent = editing ? "Save notes" : "Edit notes";
+    btnCancelExistingCustomerNotes.classList.toggle("hidden", !editing);
+  }
+
+  async function fillExistingStandaloneCustomerDetails(customer) {
+    const full = await fetchCustomerFull(customer.id);
+
+    selectedExistingStandaloneCustomer = full;
+    existingStandaloneOriginalNotes = full.notes || "";
+
+    existingCustomerCodeStandalone.value = full.code || "";
+    existingCustomerNameStandalone.value = full.name || "";
+    existingCustomerCountryStandalone.value = full.country || "";
+    existingCustomerNotesStandalone.value = full.notes || "";
+
+    existingCustomerDetailsStandalone.classList.remove("hidden");
+    setExistingStandaloneNotesEditMode(false);
+  }
+
+  async function saveExistingStandaloneCustomerNotes() {
+    if (!selectedExistingStandaloneCustomer?.id) {
+      throw new Error("No existing customer selected.");
+    }
+
+    const newNotes = existingCustomerNotesStandalone.value.trim();
+
+    const { error } = await sb
+      .from("customers")
+      .update({
+        notes: newNotes || null
+      })
+      .eq("id", selectedExistingStandaloneCustomer.id);
+
+    if (error) {
+      throw new Error("Failed to save notes: " + error.message);
+    }
+
+    existingStandaloneOriginalNotes = newNotes;
+    selectedExistingStandaloneCustomer.notes = newNotes;
+
+    await loadCustomers();
+    setExistingStandaloneNotesEditMode(false);
+    setCreateCustomerMsg("Customer notes saved.", true);
+  }
+
+  function cancelExistingStandaloneCustomerNotesEdit() {
+    existingCustomerNotesStandalone.value = existingStandaloneOriginalNotes || "";
+    setExistingStandaloneNotesEditMode(false);
+    setCreateCustomerMsg("", true);
+  }
+
+  async function createCustomerRecord({ name, countryCode, notes }) {
+    const cleanName = String(name || "").trim().replace(/\s+/g, " ");
+    const cleanCountry = String(countryCode || "").trim();
+
+    if (!cleanName) throw new Error("Customer name is required.");
+    if (!cleanCountry) throw new Error("Country is required.");
+    if (checkCustomerDuplicate(cleanName)) {
+      throw new Error("A customer with this name already exists.");
+    }
+
+    const code = makeCustomerCode(cleanName);
+
+    const { data, error } = await sb
+      .from("customers")
+      .insert([{
+        name: cleanName,
+        code,
+        country: cleanCountry,
+        notes: String(notes || "").trim() || null
+      }])
+      .select("id")
+      .single();
+
+    if (error) throw new Error("Creating customer failed: " + error.message);
+    return data.id;
+  }
+
+  async function resolvePendingCustomerId() {
+    const selectedId = pendingExistingCustomerPicker.getSelectedId();
+    const newName = newCustomerNamePending.value.trim();
+    const notes = customerNotesPending.value.trim();
+    const countryCode = pendingCountryPicker.getSelectedCode();
+
+    const usingExisting = !!selectedId;
+    const usingNew = !!newName;
+
+    if (usingExisting && usingNew) {
+      throw new Error("Choose one option only: use existing customer OR create new customer.");
+    }
+
+    if (!usingExisting && !usingNew) {
+      throw new Error("Choose one option: select an existing customer OR create a new customer.");
+    }
+
+    if (usingExisting) return selectedId;
+
+    return await createCustomerRecord({
+      name: newName,
+      countryCode,
+      notes
+    });
+  }
+
+  const session = await requireAuth("login.html", { reveal: false });
+  if (!session) return;
+
+  const myUserId = session.user.id;
+  whoEl.textContent = `Logged in as ${session.user.email || myUserId}`;
+
+  const { data: myProf, error: myProfErr } = await sb
+    .from("profiles")
+    .select("role,status")
+    .eq("user_id", myUserId)
+    .maybeSingle();
+
+  if (myProfErr || !myProf || String(myProf.role) !== "admin" || String(myProf.status) !== "active") {
+    try { sessionStorage.setItem("authError", "blocked"); } catch { }
+    await sb.auth.signOut().catch(() => { });
+    window.location.replace("login.html");
+    return;
+  }
+
+  if (window.revealPage) window.revealPage();
+  else document.documentElement.style.visibility = "visible";
 
   async function loadPending() {
     pendingTbody.innerHTML = `<tr><td colspan="5">Loading…</td></tr>`;
 
     const { data, error } = await sb
       .from("profiles")
-      .select("user_id, requested_customer_name, requested_email, requested_full_name, status, created_at")
+      .select("user_id, requested_customer_name, requested_email, requested_full_name, created_at")
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
@@ -115,9 +697,12 @@
     }
 
     if (!data || data.length === 0) {
+      pendingDecisionPanel.classList.add("hidden");
       pendingTbody.innerHTML = `<tr><td colspan="5">No pending users 🎉</td></tr>`;
       return;
     }
+
+    pendingDecisionPanel.classList.remove("hidden");
 
     pendingTbody.innerHTML = data.map((p) => {
       const created = p.created_at ? formatDate(p.created_at) : "";
@@ -145,29 +730,8 @@
     }).join("");
   }
 
-  async function ensureCustomerId() {
-    const newName = newCustomerName.value.trim();
-    const selectedId = customersSelect.value;
-
-    if (newName) {
-      const code = makeCustomerCode(newName);
-
-      const { data, error } = await sb
-        .from("customers")
-        .insert([{ name: newName, code }])
-        .select("id")
-        .single();
-
-      if (error) throw new Error("Creating customer failed: " + error.message);
-      return data.id;
-    }
-
-    if (!selectedId) throw new Error("Select an existing customer OR type a new customer name.");
-    return selectedId;
-  }
-
   async function approveUser(userId) {
-    const customerId = await ensureCustomerId();
+    const customerId = await resolvePendingCustomerId();
 
     const payload = {
       status: "active",
@@ -199,11 +763,9 @@
     if (error) throw new Error("Reject failed: " + error.message);
   }
 
-  // --- ACTIVE USERS (with robust embed using FK constraint) ---
   async function loadActiveUsers() {
-    activeTbody.innerHTML = `<tr><td colspan="8">Loading…</td></tr>`;
+    activeTbody.innerHTML = `<tr><td colspan="7">Loading…</td></tr>`;
 
-    // IMPORTANT: explicit embed via FK name (most robust)
     const sel =
       "user_id,role,requested_full_name,requested_email,customer_id,approved_at,approved_by,created_at," +
       "customer:customers!profiles_customer_id_fkey(id,name,code)";
@@ -215,14 +777,41 @@
 
     if (error) {
       console.error("loadActiveUsers error:", error);
-      activeTbody.innerHTML = `<tr><td colspan="8">Error loading active users: ${esc(error.message)}</td></tr>`;
+      activeTbody.innerHTML = `<tr><td colspan="7">Error loading active users: ${esc(error.message)}</td></tr>`;
       return;
     }
 
-    activeUsersData = (data || []).map((u) => {
+    const rows = data || [];
+
+    const approverIds = [...new Set(
+      rows.map(u => u.approved_by).filter(Boolean)
+    )];
+
+    let approverNameMap = {};
+
+    if (approverIds.length) {
+      const { data: approvers, error: approversError } = await sb
+        .from("profiles")
+        .select("user_id,requested_full_name")
+        .in("user_id", approverIds);
+
+      if (approversError) {
+        console.error("load approvers error:", approversError);
+      } else {
+        approverNameMap = Object.fromEntries(
+          (approvers || []).map(a => [
+            a.user_id,
+            makeDisplayName(a.requested_full_name || "")
+          ])
+        );
+      }
+    }
+
+    activeUsersData = rows.map((u) => {
       const display = makeDisplayName(u.requested_full_name);
       const c = u.customer;
       const customerLabel = c ? `${c.name} (${c.code})` : (u.customer_id ? String(u.customer_id) : "");
+      const approverName = approverNameMap[u.approved_by] || "";
 
       return {
         user_id: u.user_id,
@@ -232,7 +821,7 @@
         customer_label: customerLabel,
         created_at: u.created_at,
         approved_at: u.approved_at,
-        approved_by: u.approved_by
+        approver_name: approverName
       };
     });
 
@@ -243,53 +832,150 @@
     const dir = sortDir === "asc" ? 1 : -1;
 
     activeUsersData.sort((a, b) => {
-      const va = (a[sortKey] ?? "").toString().toLowerCase();
-      const vb = (b[sortKey] ?? "").toString().toLowerCase();
+      let va = a[sortKey];
+      let vb = b[sortKey];
+
+      if (sortKey === "approved_at") {
+        va = new Date(va || 0).getTime();
+        vb = new Date(vb || 0).getTime();
+      } else {
+        va = (va ?? "").toString().toLowerCase();
+        vb = (vb ?? "").toString().toLowerCase();
+      }
+
       if (va < vb) return -1 * dir;
       if (va > vb) return 1 * dir;
       return 0;
     });
 
     renderActive();
+    updateSortIndicator();
   }
 
   function renderActive() {
     if (!activeUsersData.length) {
-      activeTbody.innerHTML = `<tr><td colspan="8">No active users.</td></tr>`;
+      activeTbody.innerHTML = `<tr><td colspan="7">No active users.</td></tr>`;
       return;
     }
 
     activeTbody.innerHTML = activeUsersData.map((u) => `
-      <tr>
-        <td><strong>${esc(u.display_name)}</strong></td>
-        <td>${esc(u.email)}</td>
-        <td>${esc(u.role)}</td>
-        <td>${esc(u.customer_label)}</td>
-        <td class="small">${esc(formatDate(u.created_at))}</td>
-        <td class="small">${esc(formatDate(u.approved_at))}</td>
-        <td class="mono small">${esc(u.approved_by || "")}</td>
-        <td class="mono small">${esc(u.user_id)}</td>
-      </tr>
-    `).join("");
+    <tr>
+      <td><strong>${esc(u.display_name)}</strong></td>
+      <td>${esc(u.email)}</td>
+      <td>${esc(u.role)}</td>
+      <td>${esc(u.customer_label)}</td>
+      <td class="small">${esc(formatDate(u.created_at))}</td>
+      <td class="small">
+        ${esc(formatDate(u.approved_at))}
+        ${u.approver_name ? `<div class="small">${esc(u.approver_name)}</div>` : ""}
+      </td>
+      <td class="mono small">${esc(u.user_id)}</td>
+    </tr>
+  `).join("");
   }
 
-  // Events
   $("btnRefresh").addEventListener("click", async () => {
     setMsg("Refreshing…", true);
     await loadCustomers();
+    await loadCountries();
     await loadPending();
     await loadActiveUsers();
+    setPendingModeUI();
     setMsg("", true);
   });
 
   $("btnLogout").addEventListener("click", async () => {
-    await sb.auth.signOut().catch(() => {});
+    await sb.auth.signOut().catch(() => { });
     window.location.replace("login.html");
   });
 
-  $("btnClearNew").addEventListener("click", () => {
-    newCustomerName.value = "";
-    setMsg("New customer cleared.", true);
+  $("btnClearPendingChoice").addEventListener("click", clearPendingChoice);
+  $("btnClearStandaloneCustomer").addEventListener("click", clearStandaloneCreate);
+
+  newCustomerNamePending.addEventListener("input", () => {
+    if (newCustomerNamePending.value.trim()) {
+      pendingExistingCustomerPicker.clear();
+    } else {
+      customerNotesPending.value = "";
+      pendingCountryPicker.clear();
+    }
+    setPendingModeUI();
+  });
+
+  $("btnCreateStandaloneCustomer").addEventListener("click", async () => {
+    try {
+      setCreateCustomerMsg("Creating customer…", true);
+
+      await createCustomerRecord({
+        name: newCustomerNameStandalone.value.trim(),
+        countryCode: standaloneCountryPicker.getSelectedCode(),
+        notes: customerNotesStandalone.value.trim()
+      });
+
+      await loadCustomers();
+      await loadActiveUsers();
+      clearStandaloneCreate();
+      setCreateCustomerMsg("Customer created.", true);
+    } catch (err) {
+      console.error(err);
+      setCreateCustomerMsg(String(err?.message || err), false);
+    }
+  });
+
+
+  btnEditExistingCustomerNotes.addEventListener("click", async () => {
+    try {
+      if (!selectedExistingStandaloneCustomer?.id) {
+        setCreateCustomerMsg("Select an existing customer first.", false);
+        return;
+      }
+
+      if (!existingStandaloneNotesEditMode) {
+        existingStandaloneOriginalNotes = existingCustomerNotesStandalone.value || "";
+        setExistingStandaloneNotesEditMode(true);
+        setCreateCustomerMsg("Editing notes…", true);
+        existingCustomerNotesStandalone.focus();
+        return;
+      }
+
+      setCreateCustomerMsg("Saving notes…", true);
+      await saveExistingStandaloneCustomerNotes();
+    } catch (err) {
+      console.error(err);
+      setCreateCustomerMsg(String(err?.message || err), false);
+    }
+  });
+
+  btnCancelExistingCustomerNotes.addEventListener("click", () => {
+    cancelExistingStandaloneCustomerNotesEdit();
+  });
+
+  existingCustomerSearchStandalone.addEventListener("input", () => {
+    existingStandaloneCustomerPicker.render(existingCustomerSearchStandalone.value);
+  });
+
+  newCustomerNameStandalone.addEventListener("input", () => {
+    const name = newCustomerNameStandalone.value.trim();
+
+    if (!name) {
+      setCreateCustomerMsg("", true);
+      return;
+    }
+
+    if (checkCustomerDuplicate(name)) {
+      setCreateCustomerMsg("Warning: a customer with this name already exists.", false);
+    } else {
+      setCreateCustomerMsg("", true);
+    }
+  });
+
+  newCustomerNameStandalone.addEventListener("blur", async () => {
+    const name = newCustomerNameStandalone.value.trim();
+    if (!name || name.length < 3) return;
+
+    if (checkCustomerDuplicate(name)) {
+      setCreateCustomerMsg("Warning: a customer with this name already exists.", false);
+    }
   });
 
   pendingTbody.addEventListener("click", async (e) => {
@@ -316,26 +1002,39 @@
       await loadCustomers();
       await loadPending();
       await loadActiveUsers();
-      newCustomerName.value = "";
+      clearPendingChoice();
     } catch (err) {
       console.error(err);
       setMsg(String(err?.message || err), false);
     }
   });
 
-  // Sort clicks for Active table headers
   document.querySelectorAll(".th-sort").forEach((th) => {
     th.addEventListener("click", () => {
       const key = th.getAttribute("data-key");
       if (!key) return;
       if (sortKey === key) sortDir = (sortDir === "asc") ? "desc" : "asc";
-      else { sortKey = key; sortDir = "asc"; }
+      else {
+        sortKey = key;
+        sortDir = (key === "approved_at") ? "desc" : "asc";
+      }
       sortAndRenderActive();
     });
   });
 
-  // Initial load
+  $("activeSortSelect").addEventListener("change", (e) => {
+    sortKey = e.target.value;
+    sortDir = (sortKey === "approved_at") ? "desc" : "asc";
+    sortAndRenderActive();
+  });
+
+  pendingCountryPicker.setEnabled(false);
+  customerNotesPending.disabled = true;
+
   await loadCustomers();
+  await loadCountries();
   await loadPending();
   await loadActiveUsers();
+  setPendingModeUI();
+  updateSortIndicator();
 })();

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en" style="visibility:hidden;">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin – Approvals</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="auth-guard.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background:#f3f4f6; }
+    header { display:flex; gap:12px; align-items:center; justify-content:space-between; padding:16px 20px; background:#111827; color:#fff; }
+    header .left { display:flex; flex-direction:column; gap:4px; }
+    header .left .sub { font-size:12px; opacity:.8; }
+    header button { background:#fff; color:#111827; border:0; padding:8px 12px; border-radius:6px; cursor:pointer; }
+
+    main { padding: 16px 20px; display:flex; flex-direction:column; gap:16px; }
+    .card { background:#fff; border-radius:10px; padding:16px; box-shadow:0 8px 20px rgba(0,0,0,.08); }
+
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    label { font-size:12px; color:#374151; display:block; margin-bottom:6px; }
+    input, select { padding:10px; border:1px solid #d1d5db; border-radius:8px; min-width: 260px; }
+
+    .btn { padding:10px 12px; border-radius:8px; border:0; cursor:pointer; }
+    .btn-primary { background:#111827; color:#fff; }
+    .btn-danger { background:#b91c1c; color:#fff; }
+    .btn-muted { background:#e5e7eb; color:#111827; }
+
+    .msg { margin: 12px 0 0; font-size: 14px; min-height: 18px; }
+
+    table { width:100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { text-align:left; padding:10px; border-bottom:1px solid #e5e7eb; vertical-align: top; }
+    th { font-size:12px; color:#374151; user-select:none; }
+    td { font-size:13px; }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
+    .small { font-size: 12px; color:#6b7280; }
+    .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#fef3c7; color:#92400e; font-size:12px; }
+
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .th-sort { cursor:pointer; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="left">
+      <div><strong>Admin Approvals</strong></div>
+      <div class="sub" id="whoami">—</div>
+    </div>
+    <div class="right">
+      <button id="btnRefresh">Refresh</button>
+      <button id="btnLogout">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Pending Users -->
+    <div class="card">
+      <h3>Pending Users</h3>
+
+      <div class="row">
+        <div>
+          <label>Customers (dropdown)</label>
+          <select id="customersSelect">
+            <option value="">Loading…</option>
+          </select>
+          <div class="small">Only visible to admins (RLS).</div>
+        </div>
+
+        <div>
+          <label>New customer name (optional)</label>
+          <input id="newCustomerName" type="text" placeholder="Create new customer…" />
+          <div class="small">If filled, we create a new customer and assign it.</div>
+        </div>
+
+        <div>
+          <button class="btn btn-muted" id="btnClearNew">Clear “new customer”</button>
+        </div>
+      </div>
+
+      <div class="msg" id="msg"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>User</th>
+            <th>Requested company</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="pendingTbody">
+          <tr><td colspan="5">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Active Users -->
+    <div class="card">
+      <h3>Active Users</h3>
+      <div class="small">Click headers to sort.</div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="th-sort" data-key="display_name">User</th>
+            <th class="th-sort" data-key="email">Email</th>
+            <th class="th-sort" data-key="role">Role</th>
+            <th class="th-sort" data-key="customer_label">Customer</th>
+            <th class="th-sort" data-key="created_at">Created</th>
+            <th class="th-sort" data-key="approved_at">Approved</th>
+            <th class="th-sort" data-key="approved_by">Approved By</th>
+            <th>User ID</th>
+          </tr>
+        </thead>
+        <tbody id="activeTbody">
+          <tr><td colspan="8">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <script src="admin-approval.js"></script>
+</body>
+</html>

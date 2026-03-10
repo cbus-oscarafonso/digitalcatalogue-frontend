@@ -25,7 +25,6 @@
     inset 0 10px 18px rgba(255, 255, 255, .22),
     inset 0 -12px 18px rgba(0, 0, 0, .10),
     0 7px 16px rgba(0, 0, 0, .14);
-
 }
 
 * {
@@ -50,7 +49,6 @@ body {
   gap: 12px;
 }
 
-/* crumbs empurram o botão para a direita */
 .crumbs {
   flex: 1;
   min-width: 0;
@@ -64,7 +62,6 @@ body {
 
 .brandLogo {
   height: 26px;
-  /* ajusta ao teu header */
   width: auto;
   display: block;
 }
@@ -171,12 +168,7 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-
-  /* efeito subtil: “nicho” + elevação leve */
-  box-shadow:
-    /*inset 0 10px 18px rgba(255,255,255,.55),
-    inset 0 -10px 16px rgba(0,0,0,.06),*/
-    0 8px 18px rgba(0, 0, 0, .10);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .10);
   transition: box-shadow .18s ease, border-color .18s ease;
 }
 
@@ -184,11 +176,8 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* preenche tudo, sem faixas */
   object-position: center;
-  /* corta a partir do centro */
   display: block;
-  /* evita gap de inline-img */
 }
 
 .selected {
@@ -203,7 +192,6 @@ body {
   font-size: 16px;
   line-height: 1.15;
   padding-bottom: 6px;
-  /* espaço para a linha */
 }
 
 .selectedTitle::after {
@@ -229,7 +217,6 @@ body {
   margin-right: auto;
 }
 
-/* separadores verticais */
 .meta>*+* {
   padding-left: 9px;
   border-left: 1px solid var(--line);
@@ -257,7 +244,6 @@ body {
   align-items: center;
 }
 
-/* ===== 3D ENGINE (comum) ===== */
 .btn,
 .clientBtn {
   transition: transform .12s ease, box-shadow .16s ease, filter .16s ease;
@@ -280,7 +266,6 @@ body {
   box-shadow: var(--sh3d-active);
 }
 
-/* disabled só se aplica a <button> */
 .btn:disabled {
   opacity: .5;
   cursor: not-allowed;
@@ -291,7 +276,6 @@ body {
     0 6px 14px rgba(0, 0, 0, .10);
 }
 
-/* ===== BTN (base) ===== */
 .btn {
   padding: 10px 12px;
   border-radius: 10px;
@@ -302,13 +286,10 @@ body {
   white-space: nowrap;
 }
 
-/* ===== BTN primary (só cores + sombras ligeiramente adaptadas) ===== */
 .btn.primary {
   background: var(--blue);
   border-color: var(--blue);
   color: #fff;
-
-  /* mantém o mesmo “motor”, mas com highlights mais adequados ao azul */
   box-shadow:
     inset 0 12px 22px rgba(255, 255, 255, .14),
     inset 0 -10px 16px rgba(0, 0, 0, .12),
@@ -331,13 +312,11 @@ body {
     0 9px 20px rgba(0, 0, 0, .20);
 }
 
-/* big é só sizing */
 .btn.big {
   width: 100%;
   padding: 12px 14px;
   font-size: 16px;
 }
-
 
 .qtyBox {
   margin-left: auto;
@@ -348,8 +327,6 @@ body {
   overflow: hidden;
   background: #fff;
   flex: 0 0 auto;
-
-  /* sensação de “encaixe” / afundado */
   box-shadow:
     inset 0 3px 6px rgba(0, 55, 100, .12),
     inset 0 -1px 0 rgba(255, 255, 255, .6);
@@ -364,8 +341,6 @@ body {
   font-weight: 600;
   text-align: center;
   color: var(--blue);
-
-  /* estado base: quase invisível */
   box-shadow: none;
   transition:
     box-shadow .12s ease,
@@ -373,19 +348,15 @@ body {
     background-color .12s ease;
 }
 
-/* hover: micro-elevação, muito subtil */
 .qtyBtn:hover {
   background: rgba(0, 0, 0, .03);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, .15);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .15);
 }
 
-/* active: micro-press (consistente com o resto da UI) */
 .qtyBtn:active {
   transform: translateY(0.5px);
   background: rgba(0, 0, 0, .05);
-  box-shadow:
-    0 1px 1px rgba(0, 0, 0, .18) inset;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .18) inset;
 }
 
 .qtyInput {
@@ -397,21 +368,17 @@ body {
   padding: 10px 2px;
   font-weight: 700;
   background: transparent;
-
-  /* afundamento subtil, coerente com a qtyBox */
   box-shadow:
     inset 0 2px 4px rgba(0, 55, 100, .18),
     inset 0 -1px 0 rgba(255, 255, 255, .6);
 }
 
-/* fazer dessaparecer setas da quantidade -- Chrome / Edge / Safari */
 .qtyInput::-webkit-outer-spin-button,
 .qtyInput::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-/* fazer dessaparecer setas da quantidade -- Firefox */
 .qtyInput {
   -moz-appearance: textfield;
   appearance: textfield;
@@ -419,13 +386,10 @@ body {
 
 .unit {
   padding: 0 6px;
-  /* ↓ menos espaço lateral */
   font-size: 12px;
   font-weight: 600;
-  /* ↓ menos pesado */
   color: var(--gray);
   line-height: 1;
-  /* 🔑 evita “boiar” */
 }
 
 .cart {
@@ -433,9 +397,7 @@ body {
   flex-direction: column;
   min-height: 0;
   flex: 1;
-
   --cart-pad-x: 10px;
-  /* 👈 adiciona isto */
 }
 
 .cartHeader {
@@ -450,7 +412,6 @@ body {
   font-size: 12px;
 }
 
-
 .cartBody {
   padding: 0 var(--cart-pad-x);
   overflow: auto;
@@ -464,9 +425,7 @@ body {
   grid-template-columns: 80px 1fr 50px 45px 25px;
   gap: 5px;
   padding: 8px 6px;
-  /* em vez de 8px 0 */
   margin: 0 -6px;
-  /* mantém alinhamento com header */
   align-items: center;
 }
 
@@ -475,7 +434,6 @@ body {
   border-radius: 8px;
 }
 
-/* linha só quando há 2+ rows E nunca na última */
 .cartRow:not(:only-child):not(:last-child) {
   border-bottom: 1.5px dashed var(--line);
 }
@@ -499,27 +457,19 @@ body {
 
 .rmBtn {
   display: flex;
-  /* 🔑 */
   align-items: center;
-  /* centra na vertical */
   justify-content: center;
-  /* centra na horizontal */
-
   border: 2px solid #fecaca;
   background: #fff;
   color: #b91c1c;
   border-radius: 4px;
   width: 22px;
-  /* tamanho fixo = botão quadrado */
   height: 22px;
   padding: 0;
-  /* remove interferências */
   cursor: pointer;
   font-weight: 900;
   font-size: 14px;
-  /* controla o tamanho do X */
   line-height: 1;
-  /* evita drift vertical */
 }
 
 .cartFooter {
@@ -558,19 +508,15 @@ body {
   position: relative;
   height: 100%;
   overflow: hidden;
-  /* o shell não cresce */
 }
 
 .svgToolbar {
   position: absolute;
   top: 10px;
   right: 10px;
-
   display: flex;
   align-items: flex-start;
-  /* 🔑 topo do rail */
   gap: 10px;
-
   z-index: 5;
 }
 
@@ -578,14 +524,10 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  /* 🔑 todos com mesma largura */
   gap: 0;
-  /* 🔑 sem espaço entre botões */
-
   border: 1px solid rgba(135, 135, 135, .22);
   border-radius: 12px;
   overflow: hidden;
-  /* 🔑 cantos perfeitos */
   background: #fff;
 }
 
@@ -603,36 +545,25 @@ body {
   border-color: rgba(0, 55, 100, .35);
 }
 
-/* os botões dentro do rail ficam “encaixados” e centrados */
 .zoomStack .iconBtn {
   width: 44px;
-  /* compacto */
   height: 36px;
-  /* compacto */
   padding: 0;
-  /* sem padding extra */
   border: 0;
-  /* o rail já tem border */
   border-radius: 0;
-  /* cantos vêm do rail */
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 🔑 tudo centrado */
   line-height: 1;
   box-shadow: none;
-  /* remove variações */
 }
 
-/* separadores fininhos entre botões */
-.zoomStack .iconBtn+.iconBtn {
+.zoomStack .iconBtn + .iconBtn {
   border-top: 1px solid rgba(135, 135, 135, .18);
 }
 
-/* hover discreto (não mexe layout) */
 .zoomStack .iconBtn:hover {
   border-color: transparent;
-  /* anula hover antigo */
   background: rgba(0, 0, 0, .03);
 }
 
@@ -645,9 +576,7 @@ body {
   cursor: default;
   position: absolute;
   inset: 0;
-  /* ocupa exactamente a área do shell */
   overflow: auto;
-  /* SCROLL BARS AQUI */
 }
 
 .panOverlay {
@@ -656,10 +585,8 @@ body {
   inset: 0;
   z-index: 5;
   pointer-events: none;
-  /* por defeito NÃO intercepta cliques */
   background: transparent;
 }
-
 
 .svgViewport.canPan {
   cursor: grab;
@@ -676,21 +603,16 @@ body {
   border: 0;
 }
 
-
-/* LINK CLIENT AREA */
 .clientBtn {
   display: flex;
   align-items: center;
   gap: 8px;
-
   padding: 4px 8px;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: rgb(200, 200, 200);
-
   position: relative;
   overflow: hidden;
-
   font-weight: 600;
   text-decoration: none;
   color: var(--blue);
@@ -699,23 +621,20 @@ body {
   transition: transform .12s ease, box-shadow .16s ease, filter .16s ease;
 }
 
-/* overlay branco discreto elegante */
 .clientBtn::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom,
-      rgba(255, 255, 255, .45),
-      rgba(255, 255, 255, .12) 45%,
-      rgba(255, 255, 255, 0) 70%);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, .45),
+    rgba(255, 255, 255, .12) 45%,
+    rgba(255, 255, 255, 0) 70%
+  );
   pointer-events: none;
 }
 
-
-/* ÍCONE */
 .clientIcon {
-
-
   display: grid;
   place-items: center;
   color: var(--blue);
@@ -727,7 +646,6 @@ body {
   display: block;
 }
 
-/* evita seleções acidentais */
 .svgViewport,
 .panOverlay {
   -webkit-user-select: none;
@@ -737,22 +655,15 @@ body {
 .panHint {
   position: absolute;
   top: 12px;
-  /* 🔑 encostado acima */
   left: 50%;
   transform: translateX(-50%);
-  /* 🔑 centrado horizontalmente */
   z-index: 6;
-
   color: var(--gray1);
   font: 600 13px Rubik, sans-serif;
   letter-spacing: .02em;
   white-space: nowrap;
-
   opacity: .35;
-  /* 🔑 subtil */
   pointer-events: none;
-  /* não interfere */
-
   background: rgba(255, 255, 255, .15);
   padding: 6px 12px;
   border-radius: 12px;
@@ -763,11 +674,6 @@ body {
   filter: brightness(1.06);
 }
 
-
-
-
-
-/* ===== Client area header ===== */
 .topRightTitle {
   font-weight: 700;
   font-size: 14px;
@@ -775,19 +681,16 @@ body {
   white-space: nowrap;
 }
 
-/* ===== 3-column layout (client area) ===== */
 .layoutClient {
   grid-template-columns: minmax(360px, 30vw) 1fr minmax(280px, 22vw);
 }
 
-/* títulos consistentes */
 .panelTitle {
   font-weight: 700;
   color: var(--blue);
   font-size: 14px;
 }
 
-/* ===== List (1 column, header/body style like cart) ===== */
 .list {
   display: flex;
   flex-direction: column;
@@ -816,22 +719,17 @@ body {
   padding: 12px 0;
 }
 
-/* row style (hover like cartRow) */
 .listRow {
   width: 100%;
   text-align: left;
-
   display: block;
   padding: 10px 6px;
   margin: 0 -6px;
-
   border: 0;
   background: transparent;
   cursor: pointer;
-
   color: #111827;
   text-decoration: none;
-
   border-radius: 10px;
 }
 
@@ -839,7 +737,6 @@ body {
   box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, .03);
 }
 
-/* 2-line content */
 .listTop {
   font-weight: 800;
   font-size: 12px;
@@ -854,7 +751,6 @@ body {
   line-height: 1.15;
 }
 
-/* selected: bold + obvious + outer shadow above/below */
 .listRow.selected {
   font-weight: 700;
   box-shadow:
@@ -864,12 +760,10 @@ body {
   background: rgba(255, 255, 255, .85);
 }
 
-/* links in right panel should look like rows */
 .linkRow {
   display: block;
 }
 
-/* ===== Center viewer ===== */
 .viewerWrap {
   flex: 1;
   min-height: 0;
@@ -880,37 +774,30 @@ body {
 .txtViewer {
   margin: 0;
   white-space: pre-wrap;
-  /* mantém quebras + adapta ao width */
   word-break: break-word;
   font-size: 12px;
   line-height: 1.35;
   color: #111827;
 }
 
-/* ===== Header right links ===== */
 .topLinks {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-/* botão Search mais discreto */
 .searchBtn {
   display: flex;
   align-items: center;
   gap: 6px;
-
   padding: 4px 10px;
   border-radius: 999px;
-
   border: 1px solid rgba(255, 255, 255, .28);
   background: rgba(255, 255, 255, .08);
-
   color: #e5f0ff;
   text-decoration: none;
   font-weight: 600;
   font-size: 12px;
-
   opacity: .92;
   transition: opacity .15s ease, background .15s ease, border-color .15s ease;
 }
@@ -935,56 +822,46 @@ body {
   white-space: nowrap;
 }
 
-/* ===== Search page ===== */
 .layoutSearch {
   grid-template-columns: 1fr;
-  /* single column, same layout base */
 }
 
-.searchHeader{
+.searchHeader {
   position: sticky;
-  top: 0;                /* fica fixo no topo do scroll do listBody */
+  top: 0;
   z-index: 2;
-
   display: grid;
-  grid-template-columns: 64px 480px 1fr; /* igual às rows */
+  grid-template-columns: 64px 480px 1fr;
   gap: 10px;
-
-  background: rgba(255,255,255,.96);
+  background: rgba(255, 255, 255, .96);
   backdrop-filter: blur(2px);
-
   border-bottom: 1px solid var(--line);
 }
 
-.searchHeaderLeft{
-  grid-column: 1 / 3;     /* ocupa thumb + code */
+.searchHeaderLeft {
+  grid-column: 1 / 3;
   font-weight: 900;
   font-size: 11px;
   color: #111827;
   text-transform: uppercase;
   letter-spacing: .04em;
   opacity: .85;
-
   padding: 10px 0;
 }
 
-.searchHeaderRight{
-  grid-column: 3 / 4;     /* preview */
+.searchHeaderRight {
+  grid-column: 3 / 4;
   font-weight: 900;
   font-size: 11px;
   color: #111827;
   text-transform: uppercase;
   letter-spacing: .04em;
   opacity: .85;
-
   padding: 10px 0;
-
-  /* separador visual */
   border-left: 1px solid var(--line);
   padding-left: 12px;
 }
 
-/* Search bar inside panelTop */
 .searchBar {
   margin-top: 10px;
   display: flex;
@@ -1029,7 +906,6 @@ body {
   text-align: right;
 }
 
-/* Result rows: 3 columns (thumb / code / preview) */
 .searchRow {
   display: grid;
   grid-template-columns: 64px 480px 1fr;
@@ -1057,7 +933,6 @@ body {
   font-size: 12px;
   color: #111827;
   line-height: 1.25;
-  /* separação visual da coluna esquerda (thumb + code) */
   border-left: 1px solid var(--line);
   padding-left: 12px;
 }
@@ -1066,23 +941,25 @@ body {
   font-weight: 900;
 }
 
-.searchHeader[hidden]{ display:none !important; }
-
-.searchCodeWrap{
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-  min-width:0;
+.searchHeader[hidden] {
+  display: none !important;
 }
 
-.searchCodeDesc{
-  font-size:11px;
-  color:var(--gray);
-  font-weight:600;
-  line-height:1.15;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+.searchCodeWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.searchCodeDesc {
+  font-size: 11px;
+  color: var(--gray);
+  font-weight: 600;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .searchCrumb {
@@ -1090,67 +967,53 @@ body {
   font-size: 12px;
   color: var(--blue);
   line-height: 1.15;
-
-  /* permitir 2 linhas */
   white-space: normal;
   overflow: hidden;
-
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2; /* WebKit */
-  line-clamp: 2;         /* Standard */
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
-/* =========================
-   MODAL: Review Order
-   ========================= */
-
-.modalOverlay{
+.modalOverlay {
   position: fixed;
   inset: 0;
-  z-index: 9999; /* acima de tudo */
+  z-index: 9999;
 }
 
-/* fundo escuro clicável */
-.modalBackdrop{
+.modalBackdrop {
   position: absolute;
   inset: 0;
   background: rgba(17, 24, 39, .55);
 }
 
-/* painel */
-.modalPanel{
+.modalPanel {
   position: relative;
   width: min(1100px, calc(100vw - 48px));
   height: min(820px, calc(100vh - 48px));
   margin: 24px auto;
-
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 18px;
-  box-shadow: 0 18px 50px rgba(0,0,0,.28);
-
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* header do modal */
-.modalTop{
+.modalTop {
   padding: 14px 16px;
   border-bottom: 1px solid var(--line);
 }
 
-/* corpo do modal (onde vive o carrinho grande) */
-.modalBody{
+.modalBody {
   padding: 14px 16px;
   flex: 1;
-  min-height: 0; /* importante p/ scroll funcionar */
+  min-height: 0;
   overflow: hidden;
 }
 
-/* footer com botões */
-.modalFooter{
+.modalFooter {
   padding: 14px 16px;
   border-top: 1px solid var(--line);
   display: flex;
@@ -1158,23 +1021,319 @@ body {
   gap: 10px;
 }
 
-/* carrinho no modal: ocupar altura e deixar scroll no body */
-.cartModal{
+.cartModal {
   height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-/* aqui o scroll do carrinho grande */
-.cartModal .cartBody{
+.cartModal .cartBody {
   flex: 1;
   min-height: 0;
   overflow: auto;
 }
 
-/* no modal, dá um bocadinho mais de “ar” às linhas */
-.cartModal .cartRow{
+.cartModal .cartRow {
   font-size: 12px;
   padding: 10px 6px;
+}
+
+.customerSuggestWrap {
+  position: relative;
+  min-width: 260px;
+}
+
+#customerSuggestDropdown,
+#customerSuggestDropdownPending {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.customerSuggestItem {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 16px;
+  padding: 6px 10px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.customerSuggestItem:hover {
+  background: #f3f4f6;
+}
+
+.customerSuggestCode {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+  letter-spacing: 0.5px;
+}
+
+.customerSuggestName {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customerAdminGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.subCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fafafa;
+  min-width: 0;
+}
+
+.subCardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 10px;
+}
+
+.existingCustomerBox {
+  margin-top: 8px;
+}
+
+@media (max-width: 1100px) {
+  .customerAdminGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================
+   ADMIN APPROVALS
+   ========================= */
+
+.layoutAdmin {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+}
+
+.adminPanel {
+  height: auto;
+  overflow: visible;
+}
+
+.adminTableWrap {
+  padding: 0 14px 14px 14px;
+  overflow-x: auto;
+}
+
+.adminPanel table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0;
+}
+
+.adminPanel th,
+.adminPanel td {
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.adminPanel th {
+  font-size: 12px;
+  color: var(--gray);
+  font-weight: 700;
+  user-select: none;
+}
+
+.adminPanel td {
+  font-size: 13px;
+  color: #111827;
+}
+
+.adminPanel .msg {
+  margin-top: 12px;
+  font-size: 14px;
+  min-height: 18px;
+}
+
+.adminPanel .pill {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.adminPanel .row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.adminPanel .field {
+  min-width: 260px;
+  flex: 1 1 260px;
+}
+
+.adminPanel .field-wide {
+  min-width: 320px;
+  flex: 1 1 320px;
+}
+
+.adminPanel label {
+  font-size: 12px;
+  color: var(--gray);
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.adminPanel input,
+.adminPanel textarea,
+.adminPanel select {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  font: 500 14px var(--font);
+}
+
+.adminPanel textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.adminPanel input:focus,
+.adminPanel textarea:focus,
+.adminPanel select:focus {
+  outline: none;
+  border-color: rgba(0, 55, 100, .35);
+  box-shadow: 0 0 0 3px rgba(0, 55, 100, .12);
+}
+
+.adminPanel .actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.adminPanel .choiceGrid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) 40px minmax(360px, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.adminPanel .choiceCard,
+.adminPanel .subCard {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(0,0,0,.06);
+  min-width: 0;
+}
+
+.adminPanel .choiceTitle,
+.adminPanel .subCardTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--blue);
+  margin: 0 0 10px 0;
+}
+
+.adminPanel .orSep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.customerAdminGrid {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.15fr) minmax(360px, .85fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.existingCustomerBox {
+  margin-top: 8px;
+}
+
+.adminPanel .pickerWrap,
+.adminPanel .customerSuggestWrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.adminPanel .pickerInput {
+  width: 100%;
+  padding-right: 34px;
+}
+
+.adminPanel .pickerCaret {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray);
+  pointer-events: none;
+  font-size: 12px;
+}
+
+.adminPanel .pickerDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 60;
+  display: none;
+}
+
+.adminPanel .pickerDropdown.open {
+  display: block;
+}
+
+.adminPanel .pickerOption {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: #fff;
+  min-width: 0;
 }
