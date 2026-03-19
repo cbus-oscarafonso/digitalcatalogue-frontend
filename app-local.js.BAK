@@ -1,11 +1,3 @@
-import {
-  getMainAssemblySvgPath,
-  getSubAssemblySvgPath,
-  getSubAssemblyThumbPath,
-  getDefaultThumbPath,
-  getSearchIndexPath
-} from "./paths.js";
-
 const $ = (id) => document.getElementById(id);
 
 /* =========================================================
@@ -977,17 +969,6 @@ async function loadSvg(url) {
   });
 }
 
-function getCatalogCodeFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('catalog');
-
-  if (!code) {
-    throw new Error('Missing catalog query parameter');
-  }
-
-  return code;
-}
-
 async function route() {
   const hash = window.location.hash || '#/';
   const pathStr = hash.replace(/^#\//, '').trim();
@@ -997,12 +978,7 @@ async function route() {
   renderCart();
 
   const last = state.path.length ? canonSvgBase(state.path[state.path.length - 1]) : null;
-  
-  const catalogCode = getCatalogCodeFromUrl();
-
-  const url = last
-    ? getSubAssemblySvgPath(catalogCode, last)
-    : getMainAssemblySvgPath(catalogCode);
+  const url = last ? `assets/svgs/${last}.svg` : state.config.root_svg;
   await loadSvg(url);
 }
 

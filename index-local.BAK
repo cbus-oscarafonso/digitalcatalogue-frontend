@@ -196,7 +196,6 @@
       const v = Date.now();
 
       const app = document.createElement("script");
-      app.type = "module";
       app.src = "app.js?v=" + v;
       document.body.appendChild(app);
 
