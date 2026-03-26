@@ -40,6 +40,9 @@
     <div class="topRightTitle">Client area</div>
 
     <div class="topLinks">
+      <button class="clientBtn btn-admin" id="btnAdminArea" style="display:none;" type="button">
+        Admin area
+      </button>
       <button class="clientBtn btn-admin" id="btnCatalogManager" style="display:none;" type="button">
         Catalog Manager
       </button>
@@ -116,6 +119,13 @@
           .maybeSingle();
 
         const role = prof?.role || "";
+        if (role === "admin" || role === "client_manager") {
+          const btnAdmin = document.getElementById("btnAdminArea");
+          if (btnAdmin) {
+            btnAdmin.style.display = "";
+            btnAdmin.addEventListener("click", () => window.location.href = "admin-approval.html");
+          }
+        }
         if (role === "admin" || role === "catalog_manager") {
           const btn = document.getElementById("btnCatalogManager");
           if (btn) {
