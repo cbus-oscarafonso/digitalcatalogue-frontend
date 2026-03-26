@@ -1,0 +1,6 @@
+{
+  "cleanUrls": false,
+  "redirects": [
+    { "source": "/", "destination": "/client-area.html" }
+  ]
+}

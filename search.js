@@ -344,7 +344,7 @@ function renderHits(hits) {
         sessionStorage.setItem('searchJump', JSON.stringify(payload));
       } catch { }
 
-      window.location.href = `index.html#/${encodeURIComponent(h.svgBase)}`;
+      window.location.href = `interactive-catalog.html#/${encodeURIComponent(h.svgBase)}`;
     });
 
     host.appendChild(row);
@@ -382,12 +382,33 @@ function runSearch() {
   renderHits(hits);
 }
 
+const STORAGE_BASE = "https://ytwwcrhtcsdpqeualnsx.supabase.co/storage/v1/object/public/catalogs";
+
+function getCatalogPaiCode() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('catalog') || null;
+}
+
+function searchIndexUrl() {
+  const paiCode = getCatalogPaiCode();
+  if (!paiCode) return null;
+  return `${STORAGE_BASE}/${paiCode}/search-index.json`;
+}
+
 async function loadIndex() {
+  const url = searchIndexUrl();
+  if (!url) {
+    READY = false;
+    setStatus('Missing ?catalog= parameter.');
+    renderEmpty('No catalog selected.');
+    return;
+  }
+
   setStatus('Loading index…');
   renderEmpty('Loading…');
 
-  const res = await fetch('assets/search-index.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load assets/search-index.json');
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load search index.');
   INDEX = await res.json();
 
   READY = true;

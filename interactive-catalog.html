@@ -18,7 +18,7 @@
     rel="stylesheet">
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Catálogo Digital (Local)</title>
+  <title>Interactive Catalog</title>
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -45,12 +45,12 @@
     <div class="brand"><img src="assets/logo.svg" alt="CATÁLOGO" class="brandLogo"></div>
     <nav class="crumbs" id="crumbs"></nav>
     <div class="topLinks">
-      <a href="search.html" class="searchBtn" id="searchLink" title="Search" aria-label="Search">
+      <button type="button" class="searchBtn" id="btnSearch" title="Search" aria-label="Search">
         <span class="searchIcon" aria-hidden="true">🔎</span>
         <span class="searchText">Search</span>
-      </a>
+      </button>
 
-      <a href="client-area.html" class="clientBtn" id="clientAreaLink" title="Client area" aria-label="Client area">
+      <a href="client-area.html" class="clientBtn btn-client" id="clientAreaLink" title="Client area" aria-label="Client area">
         <span class="clientIcon" aria-hidden="true">
           <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M12 0
@@ -68,10 +68,10 @@
 
         <span class="clientText" id="clientAreaText">Client area</span>
       </a>
-      <button id="btnAdminArea" style="display:none;">
+      <button id="btnAdminArea" class="clientBtn btn-admin" style="display:none;">
         Admin area
       </button>
-      <button class="clientBtn" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">
+      <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">
         Sign out
       </button>
     </div>
@@ -175,6 +175,42 @@
       <div class="modalFooter">
         <button class="btn" id="btnModalClose" type="button">Back to catalogue</button>
         <button class="btn primary" id="btnModalSend" type="button">Send order request</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== Search Modal (hidden by default) ===== -->
+  <div id="searchModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" data-close-search="1"></div>
+
+    <div class="modalPanel" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
+      <div class="modalTop" style="display:flex; align-items:center; gap:12px;">
+        <div class="panelTitle" id="searchModalTitle" style="flex:0 0 auto;">Search</div>
+        <div style="flex:1; display:flex; gap:8px; align-items:center;">
+          <input id="searchQ" class="searchInput" type="text"
+            placeholder="Search part numbers or descriptions"
+            autocomplete="off" spellcheck="false"
+            style="flex:1;" />
+          <button id="searchClear" class="btn" type="button">Clear</button>
+        </div>
+        <div id="searchStatus" class="searchStatus" style="flex:0 0 auto; font-size:12px; color:var(--gray);"></div>
+      </div>
+
+      <div class="modalBody" style="padding:0; display:flex; flex-direction:column; min-height:0;">
+        <div class="list" style="flex:1; min-height:0;">
+          <div class="listHeader searchHeader" id="searchResultsHeader" hidden>
+            <div class="searchHeaderLeft">Containing assembly</div>
+            <div class="searchHeaderRight">Matching text</div>
+          </div>
+          <div class="listBody" id="searchResults" style="border-bottom:none;">
+            <div class="listEmpty">Start typing to search…</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modalFooter">
+        <button class="btn" id="btnSearchClose" type="button">Close</button>
       </div>
     </div>
   </div>

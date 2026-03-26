@@ -603,22 +603,23 @@ body {
   border: 0;
 }
 
+/* ── Topbar action buttons (shared base) ───────────────────────────── */
 .clientBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: rgb(200, 200, 200);
+  gap: 7px;
+  padding: 6px 13px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
   position: relative;
   overflow: hidden;
-  font-weight: 600;
-  text-decoration: none;
-  color: var(--blue);
+  font: 600 13px var(--font);
   white-space: nowrap;
   cursor: pointer;
-  transition: transform .12s ease, box-shadow .16s ease, filter .16s ease;
+  text-decoration: none;
+  transition: transform .12s ease, box-shadow .15s ease, filter .15s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,.18);
 }
 
 .clientBtn::before {
@@ -627,11 +628,41 @@ body {
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, .45),
-    rgba(255, 255, 255, .12) 45%,
-    rgba(255, 255, 255, 0) 70%
+    rgba(255, 255, 255, .22),
+    rgba(255, 255, 255, 0) 60%
   );
   pointer-events: none;
+}
+
+.clientBtn:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+.clientBtn:active { filter: brightness(.97);  transform: translateY(1px); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+
+/* Client area — white/light, primary identity button */
+.clientBtn.btn-client {
+  background: rgba(255, 255, 255, .92);
+  border-color: rgba(255, 255, 255, .5);
+  color: var(--blue);
+}
+
+/* Admin area — amber, signals elevated access */
+.clientBtn.btn-admin {
+  background: #b45309;
+  border-color: rgba(255,255,255,.18);
+  color: #fff;
+}
+
+/* Sign out — ghost/outline, destructive but understated */
+.clientBtn.btn-signout {
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .32);
+  color: rgba(255, 255, 255, .88);
+}
+
+.clientBtn.btn-signout:hover {
+  background: rgba(220, 60, 60, .22);
+  border-color: rgba(220, 60, 60, .55);
+  color: #fff;
+  filter: none;
 }
 
 .clientIcon {
@@ -669,8 +700,7 @@ body {
   border-radius: 12px;
 }
 
-.btn:not(.primary):hover,
-.clientBtn:hover {
+.btn:not(.primary):hover {
   filter: brightness(1.06);
 }
 

@@ -1,11 +1,3 @@
-import {
-  getMainAssemblySvgPath,
-  getSubAssemblySvgPath,
-  getSubAssemblyThumbPath,
-  getDefaultThumbPath,
-  getSearchIndexPath
-} from "./paths.js";
-
 const $ = (id) => document.getElementById(id);
 
 /* =========================================================
@@ -74,16 +66,43 @@ function normPartNo(s) {
 }
 
 
+const STORAGE_BASE = "https://ytwwcrhtcsdpqeualnsx.supabase.co/storage/v1/object/public/catalogs";
+
 const state = {
-  config: null,
-  searchMeta: null, // loaded from assets/search-index.json (codeDesc for breadcrumbs)
+  catalog: null,   // { id, name, pai_code } from DB
+  searchMeta: null,
   selected: null,
   cart: [],
   path: [],
-  // mapping hotspotN -> {partNo, desc, qty}
   map: new Map(),
   bomRows: [],
 };
+
+// ── URL helpers ──────────────────────────────────────────────────────────────
+
+function svgUrl(base) {
+  const b = canonSvgBase(base);
+  const paiCode = state.catalog?.pai_code;
+  // SVG raiz fica na raiz da pasta do catálogo; subassemblies em /svg/
+  if (b === `pai_${paiCode}` || b.toLowerCase() === `pai_${paiCode}`.toLowerCase()) {
+    return `${STORAGE_BASE}/${paiCode}/${b}.svg`;
+  }
+  return `${STORAGE_BASE}/${paiCode}/svg/${b}.svg`;
+}
+
+function thumbUrl(partNo) {
+  const paiCode = state.catalog?.pai_code;
+  return `${STORAGE_BASE}/${paiCode}/thumb/thumb_${partNo}.jpg`;
+}
+
+function thumbDefaultUrl() {
+  return `${STORAGE_BASE}/thumb_default.jpg`;
+}
+
+function searchIndexUrl() {
+  const paiCode = state.catalog?.pai_code;
+  return `${STORAGE_BASE}/${paiCode}/search-index.json`;
+}
 
 /*// ===== Order request TXT formatting (aligned, like client-area samples) =====
 const COL_PN = 12;
@@ -122,21 +141,30 @@ function toast(msg) {
   toast._tm = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-async function loadConfig() {
-  const res = await fetch('data/catalog.json');
-  state.config = await res.json();
-  // Ensure root svg URL uses canonical 'pai_' prefix (Linux servers are case-sensitive)
-  if (state.config && state.config.root_svg) {
-    state.config.root_svg = canonSvgUrl(state.config.root_svg);
-  }
+async function loadCatalog() {
+  // Read catalog pai_code from URL param: index.html?catalog=50021302
+  const params = new URLSearchParams(window.location.search);
+  const paiCode = params.get('catalog');
+
+  if (!paiCode) throw new Error('Missing ?catalog= URL parameter.');
+
+  const { data, error } = await window.sb
+    .from('catalogs')
+    .select('id, name, pai_code, status')
+    .eq('pai_code', paiCode)
+    .eq('status', 'published')
+    .maybeSingle();
+
+  if (error) throw new Error('Failed to load catalog: ' + error.message);
+  if (!data) throw new Error(`Catalog '${paiCode}' not found or not published.`);
+
+  state.catalog = data;
 }
 
 async function loadSearchMeta() {
-  // Lightweight metadata used for breadcrumbs when entering via Search (code -> description).
-  // This avoids relying on Search page state and keeps behavior consistent online/offline.
   state.searchMeta = { codeDesc: {} };
   try {
-    const res = await fetch('assets/search-index.json', { cache: 'no-store' });
+    const res = await fetch(searchIndexUrl(), { cache: 'no-store' });
     if (!res.ok) return;
     const j = await res.json();
     state.searchMeta.codeDesc = (j && j.codeDesc) ? j.codeDesc : {};
@@ -152,7 +180,7 @@ function renderCrumbs() {
 
   const root = document.createElement('a');
   root.href = '#/';
-  root.textContent = state.config.title || 'Catálogo';
+  root.textContent = state.catalog?.name || 'Catálogo';
   el.appendChild(root);
 
   // ✅ Só esconder o root "pai_*" se estiver no início
@@ -372,25 +400,28 @@ function setupUI() {
 async function setSelected(partNo, desc, qty) {
   const tw = $('thumbWrap'); tw.innerHTML = '';
   const tryHead = async (url) => { try { const h = await fetch(url, { method: 'HEAD' }); return h.ok ? url : null; } catch { return null; } };
-  const base = state.config.thumbs_dir || 'assets/thumbs/';
-  const url =
-    (await tryHead(`${base}thumb_${partNo}.jpg`)) ||
-    (await tryHead(`${base}thumb_${partNo}.png`)) ||
-    `${base}thumb_default.jpg`;
 
-  const img = document.createElement('img');
-  img.src = url;
-  img.alt = partNo;
-  tw.appendChild(img);
-
+  // Update UI immediately — don't wait for network
   state.selected = { partNo, desc, qty, price: 'TBA', hasSub: false };
   $('selTitle').textContent = desc || '(sem descrição)';
   $('selPn').textContent = `P/N: ${partNo}`;
   $('selQty').textContent = qty ? `Used quantity: ${qty}` : '';
   $('btnAdd').disabled = false;
+  $('btnOpenSub').disabled = true; // will update once HEAD resolves
 
-  const sub = `assets/svgs/${partNo}.svg`;
-  try { const head = await fetch(sub, { method: 'HEAD' }); state.selected.hasSub = head.ok; } catch { state.selected.hasSub = false; }
+  // Fire both HEAD requests in parallel
+  const [thumbResult, subResult] = await Promise.allSettled([
+    tryHead(thumbUrl(partNo)),
+    tryHead(svgUrl(partNo)),
+  ]);
+
+  const imgUrl = thumbResult.value || thumbDefaultUrl();
+  const img = document.createElement('img');
+  img.src = imgUrl;
+  img.alt = partNo;
+  tw.appendChild(img);
+
+  state.selected.hasSub = subResult.value != null;
   $('btnOpenSub').disabled = !state.selected.hasSub;
 }
 
@@ -566,14 +597,14 @@ function buildMapFromGeometry(doc) {
 }
 
 function buildHotspotToPosMap(doc) {
+  // Works entirely in SVG coordinates (getBBox) to avoid CTM/scaling issues.
   const svg = doc.documentElement;
-
-  // --- helpers (screen-space, robust to transforms) ---
-  const rectOf = (el) => { try { return el.getBoundingClientRect(); } catch { return null; } };
-  const centerY = (r) => (r.top + r.bottom) / 2;
-  const centerX = (r) => (r.left + r.right) / 2;
   const txt = (el) => (el.textContent || '').replace(/\s+/g, ' ').trim();
   const low = (s) => (s || '').toLowerCase();
+
+  function bboxOf(el) {
+    try { return el.getBBox(); } catch { return null; }
+  }
 
   function median(arr) {
     const a = arr.slice().sort((x, y) => x - y);
@@ -581,63 +612,61 @@ function buildHotspotToPosMap(doc) {
     return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
   }
 
-  // --- 1) Detect ALL BOM tables by repeated headers on the same row ---
   const texts = Array.from(doc.querySelectorAll('text'));
+
+  // --- 1) Find Pos. header and validate full BOM header row ---
   const posHeaders = texts.filter(t => {
     const s = txt(t);
     return s === 'Pos.' || low(s) === 'pos.' || low(s) === 'pos';
   });
 
-  function findNearestOnSameRow(baseRect, labelSet) {
+  function findNearestOnSameRowSvg(baseBb, labelSet) {
+    const baseCy = baseBb.y + baseBb.height / 2;
     let best = null, bestScore = Infinity;
     for (const t of texts) {
       const s = low(txt(t));
       if (!labelSet.has(s)) continue;
-      const r = rectOf(t);
-      if (!r) continue;
-      if (Math.abs(centerY(r) - centerY(baseRect)) > 8) continue;
-      if (r.left <= baseRect.right - 5) continue;
-      const score = r.left - baseRect.right;
-      if (score < bestScore) {
-        bestScore = score;
-        best = { el: t, rect: r, s };
-      }
+      const bb = bboxOf(t);
+      if (!bb) continue;
+      const cy = bb.y + bb.height / 2;
+      if (Math.abs(cy - baseCy) > baseBb.height * 1.5) continue;
+      if (bb.x <= baseBb.x + baseBb.width - 1) continue;
+      const score = bb.x - (baseBb.x + baseBb.width);
+      if (score < bestScore) { bestScore = score; best = { el: t, bb }; }
     }
     return best;
   }
 
   const tables = [];
   for (const cand of posHeaders) {
-    const rPos = rectOf(cand);
-    if (!rPos) continue;
+    const bbPos = bboxOf(cand);
+    if (!bbPos) continue;
 
-    const part = findNearestOnSameRow(rPos, new Set(['part no', 'partno']));
-    const qty = findNearestOnSameRow(rPos, new Set(['qty.', 'qty']));
-    const desc = findNearestOnSameRow(rPos, new Set(['description']));
-    // accept only full header match
+    const part = findNearestOnSameRowSvg(bbPos, new Set(['part no', 'partno']));
+    const qty  = findNearestOnSameRowSvg(bbPos, new Set(['qty.', 'qty']));
+    const desc = findNearestOnSameRowSvg(bbPos, new Set(['description']));
     if (!part || !qty || !desc) continue;
 
-    const posColX = centerX(rPos);
-    const yStart = rPos.bottom + 4;
-    const tolX = Math.max(18, rPos.width * 1.2);
+    const posColCx = bbPos.x + bbPos.width / 2;
+    const yStart   = bbPos.y + bbPos.height + 0.5;
+    const tolX     = Math.max(3, bbPos.width * 1.5);
 
-    // Collect POS cells for this table
+    // Collect Pos. cells below the header
     const posCells = [];
     for (const t of texts) {
       const s = txt(t);
       if (!/^\d+$/.test(s)) continue;
-      const r = rectOf(t);
-      if (!r) continue;
-      const cx = centerX(r);
-      const cy = centerY(r);
-      if (Math.abs(cx - posColX) > tolX) continue;
+      const bb = bboxOf(t);
+      if (!bb) continue;
+      const cx = bb.x + bb.width / 2;
+      const cy = bb.y + bb.height / 2;
+      if (Math.abs(cx - posColCx) > tolX) continue;
       if (cy <= yStart) continue;
       posCells.push({ pos: Number(s), cy });
     }
     if (!posCells.length) continue;
 
     posCells.sort((a, b) => a.cy - b.cy || a.pos - b.pos);
-    // keep first occurrence per pos within a table
     const seen = new Set();
     const rows = [];
     for (const c of posCells) {
@@ -649,12 +678,12 @@ function buildHotspotToPosMap(doc) {
     const deltas = [];
     for (let i = 1; i < rows.length; i++) {
       const d = rows[i].cy - rows[i - 1].cy;
-      if (d > 2) deltas.push(d);
+      if (d > 0.5) deltas.push(d);
     }
-    const rowH = deltas.length ? median(deltas) : 14;
+    const rowH = deltas.length ? median(deltas) : 5;
 
     tables.push({
-      posColX,
+      posColCx,
       yStart,
       rowH,
       rows,
@@ -666,14 +695,14 @@ function buildHotspotToPosMap(doc) {
           const dy = Math.abs(y - r.cy);
           if (dy < bestDy) { bestDy = dy; best = r.pos; }
         }
-        return bestDy <= rowH * 0.65 ? best : null;
+        return bestDy <= rowH * 0.75 ? best : null;
       }
     });
   }
 
   if (!tables.length) return new Map();
 
-  // --- 2) Parse hotspot path sub-rectangles from its "d" attribute (SVG coords) ---
+  // --- 2) Parse hotspot path sub-rectangles (SVG coords) ---
   function bboxesFromPathD(d) {
     const parts = String(d || '').split('M').slice(1);
     const bbs = [];
@@ -689,30 +718,18 @@ function buildHotspotToPosMap(doc) {
       if (!xs.length || !ys.length) continue;
       const x0 = Math.min(...xs), x1 = Math.max(...xs);
       const y0 = Math.min(...ys), y1 = Math.max(...ys);
-      bbs.push({ x0, y0, x1, y1, w: (x1 - x0), h: (y1 - y0), cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 });
+      bbs.push({ x0, y0, x1, y1, w: x1-x0, h: y1-y0, cx: (x0+x1)/2, cy: (y0+y1)/2 });
     }
     return bbs;
   }
 
-  function svgPointToScreen(xSvg, ySvg) {
-    try {
-      const p = svg.createSVGPoint();
-      p.x = xSvg; p.y = ySvg;
-      const m = svg.getScreenCTM();
-      if (!m) return null;
-      const sp = p.matrixTransform(m);
-      return { x: sp.x, y: sp.y };
-    } catch { return null; }
-  }
+  // --- 3) Match hotspot bands to BOM rows entirely in SVG coords ---
+  const globalRowH = median(tables.map(t => t.rowH));
+  const thinMax = Math.max(1, globalRowH * 1.1);
+  const wideMin = Math.max(5,  globalRowH * 3.0);
 
-  // --- 3) Build hotspotN -> pos mapping using the "BOM band" inside each hotspot ---
   const map = new Map();
   const hotspots = Array.from(doc.querySelectorAll('g[id^="hotspot."]'));
-
-  // thresholds relative to typical row height (pick from median table rowH)
-  const globalRowH = median(tables.map(t => t.rowH));
-  const thinMax = Math.max(6, globalRowH * 0.9);
-  const wideMin = Math.max(30, globalRowH * 3.5);
 
   for (const g of hotspots) {
     const id = g.id || '';
@@ -731,30 +748,21 @@ function buildHotspotToPosMap(doc) {
       if (bb.h > thinMax) continue;
       if (bb.w < wideMin) continue;
 
-      const sp = svgPointToScreen(bb.cx, bb.cy);
-      if (!sp) continue;
-
-      // choose best matching table by X distance
+      // Find closest table by X (SVG coords)
       let bestTable = null, bestDx = Infinity;
       for (const t of tables) {
-        const dx = Math.abs(sp.x - t.posColX);
-        if (dx < bestDx) {
-          bestDx = dx; bestTable = t;
-        }
+        const dx = Math.abs(bb.cx - t.posColCx);
+        if (dx < bestDx) { bestDx = dx; bestTable = t; }
       }
       if (!bestTable) continue;
-      if (sp.y < bestTable.y0 - bestTable.rowH || sp.y > bestTable.y1 + bestTable.rowH) continue;
+      if (bb.cy < bestTable.y0 - bestTable.rowH || bb.cy > bestTable.y1 + bestTable.rowH) continue;
 
-      const pos = bestTable.closestPosByY(sp.y);
+      const pos = bestTable.closestPosByY(bb.cy);
       if (pos == null) continue;
 
-      // score: prefer closer X to pos column, closer Y to row, thinner bands
-      const yRow = bestTable.rows.find(r => r.pos === pos)?.cy ?? sp.y;
-      const score = bestDx * 0.4 + Math.abs(sp.y - yRow) + bb.h * 3 - bb.w * 0.02;
-      if (score < bestScore) {
-        bestScore = score;
-        bestPos = pos;
-      }
+      const yRow = bestTable.rows.find(r => r.pos === pos)?.cy ?? bb.cy;
+      const score = bestDx * 0.4 + Math.abs(bb.cy - yRow) + bb.h * 3 - bb.w * 0.02;
+      if (score < bestScore) { bestScore = score; bestPos = pos; }
     }
 
     if (bestPos != null) map.set(n, bestPos);
@@ -825,55 +833,47 @@ function findHotspotNByPoint(doc, clientX, clientY) {
 }
 
 function wireBridge() {
-  const obj = $('svgObj');
-  const doc = obj.contentDocument;
-  if (!doc) return;
+  // With inline SVG the document IS the main document — no contentDocument needed.
+  const svgEl = $('svgViewport').querySelector('svg.inlineSvg');
+  if (!svgEl) return;
 
-  // 🔑 permitir teclado dentro do SVG
-  try {
-    doc.documentElement.setAttribute('tabindex', '0');
-  } catch { }
-
-  // 🔑 apanhar SPACE mesmo quando o foco está “lá dentro”
-  doc.addEventListener('keydown', pan.onKeyDown, { passive: false, capture: true });
-  doc.addEventListener('keyup', pan.onKeyUp, { passive: false, capture: true });
-
-  // opcional: ao clicar no SVG, garante que o modo pan não fica preso
-  doc.addEventListener('mousedown', () => pan.up(), true);
-
-  if (!doc) return;
-
-  doc.addEventListener('contextmenu', (e) => {
-    if (window.spaceDown || window.dragging) e.preventDefault();
-  }, true);
-
-  doc.addEventListener('selectstart', (e) => {
-    if (window.spaceDown || window.dragging) e.preventDefault();
-  }, true);
+  // Wrap in a doc-like object so parseBOMTokens / collectHotspots /
+  // buildHotspotToPosMap etc. (all call doc.querySelectorAll) keep working unchanged.
+  const doc = {
+    documentElement: svgEl,
+    querySelectorAll: (sel) => svgEl.querySelectorAll(sel),
+    querySelector:    (sel) => svgEl.querySelector(sel),
+    addEventListener: (type, fn, opts) => svgEl.addEventListener(type, fn, opts),
+  };
 
   // build mapping from actual geometry
   state.map = buildMapFromGeometry(doc);
 
-  // NEW: build hotspot -> POS mapping using callout numbers
+  // build hotspot -> POS mapping using callout numbers
   state.hotspotToPos = buildHotspotToPosMap(doc);
 
-  doc.addEventListener('mouseover', (ev) => {
+  state.lastHotspotN = null;
+
+  svgEl.addEventListener('mouseover', (ev) => {
     const n = findHotspotNOnAncestors(ev.target);
     if (n !== null) state.lastHotspotN = n;
   }, true);
 
-  doc.addEventListener('click', (ev) => {
+  svgEl.addEventListener('click', (ev) => {
+    if (window.spaceDown || window.dragging) return; // don't select while panning
     const directN = findHotspotNOnAncestors(ev.target);
-    const pointN = (directN === null && (state.lastHotspotN == null)) ? findHotspotNByPoint(doc, ev.clientX, ev.clientY) : null;
-    const n = (directN !== null) ? directN : ((state.lastHotspotN != null) ? state.lastHotspotN : pointN);
+    const pointN = (directN === null && state.lastHotspotN == null)
+      ? findHotspotNByPoint(doc, ev.clientX, ev.clientY)
+      : null;
+    const n = (directN !== null) ? directN
+      : (state.lastHotspotN != null) ? state.lastHotspotN
+      : pointN;
     if (n === null) return;
 
     const pos = state.hotspotToPos?.get(n);
-
     if (pos == null) return;
 
     const row = state.rowsByPos?.get(Number(pos));
-
     if (!row) return;
 
     setSelected(row.partNo, row.desc, row.qty);
@@ -888,7 +888,7 @@ function showSvgError(msg) {
 }
 
 async function loadSvg(url) {
-  const obj = $('svgObj');
+  const viewport = $('svgViewport');
   const loading = $('svgLoading');
   const err = $('svgErr');
   err.style.display = 'none';
@@ -896,96 +896,108 @@ async function loadSvg(url) {
 
   zoomReset();
 
-  return new Promise((resolve, reject) => {
-    let done = false;
-    const to = setTimeout(() => {
-      if (done) return;
-      showSvgError('SVG não carregou. (confirma localhost e pasta certa)');
-      done = true; reject(new Error('timeout'));
-    }, 12000);
+  // Hide the <object> placeholder and remove any previously injected inline SVG
+  const objEl = document.getElementById('svgObj');
+  if (objEl) objEl.style.display = 'none';
+  const old = viewport.querySelector('svg.inlineSvg');
+  if (old) old.remove();
 
-    obj.addEventListener('load', () => {
-      if (done) return;
-      clearTimeout(to);
-      loading.style.display = 'none';
-      setTimeout(() => {
-        try {
-          wireBridge();
+  try {
+    const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const svgText = await res.text();
 
-          // ✅ Apply pending selection from Search page (auto-select + full breadcrumb path)
-          try {
-            const raw = sessionStorage.getItem('searchJump');
-            if (raw) {
-              const j = JSON.parse(raw);
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+    const parseErr = svgDoc.querySelector('parsererror');
+    if (parseErr) throw new Error('SVG parse error');
 
-              const current = state.path?.length ? state.path[state.path.length - 1] : null;
+    const svgEl = svgDoc.documentElement;
 
-              if (j && j.svgBase && current && canonSvgBase(j.svgBase) === canonSvgBase(current)) {
+    // Make it fill the viewport and be identifiable
+    svgEl.classList.add('inlineSvg');
+    svgEl.style.width = '100%';
+    svgEl.style.height = '100%';
+    svgEl.style.display = 'block';
 
-                // If Search provided a full path (root -> ... -> current), apply it and keep URL/history in sync
-                if (Array.isArray(j.path) && j.path.length >= 2) {
-                  const rootCode = j.path[0];
-                  const rest = j.path.slice(1);
+    // Ensure viewBox exists (create from width/height attrs if missing),
+    // then remove width/height attrs so CSS controls sizing.
+    if (!svgEl.hasAttribute('viewBox')) {
+      const w = parseFloat(svgEl.getAttribute('width')) || 0;
+      const h = parseFloat(svgEl.getAttribute('height')) || 0;
+      if (w && h) svgEl.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    }
+    svgEl.removeAttribute('width');
+    svgEl.removeAttribute('height');
 
-                  state.path = [canonSvgBase(`pai_${rootCode}`), ...rest.map(canonSvgBase)];
+    viewport.appendChild(svgEl);
+    loading.style.display = 'none';
 
-                  try {
-                    history.replaceState(null, '', '#/' + state.path.join('/'));
-                  } catch {
-                    location.hash = '#/' + state.path.join('/');
-                  }
+    // Small delay so layout is settled before geometry queries (getBBox, getBoundingClientRect)
+    await new Promise(r => setTimeout(r, 80));
 
-                  // Fill breadcrumb descriptions from loaded codeDesc (best-effort)
-                  try {
-                    const map = state.searchMeta?.codeDesc || {};
-                    for (const pn of state.path) {
-                      const codeKey = pn.replace(/^pai_/i, '');
-                      const desc = map[normPartNo(codeKey)] || (pn.match(/^pai_/i) ? 'Root assembly' : '');
-                      if (desc) sessionStorage.setItem(`pnDesc:${pn}`, desc);
-                    }
-                  } catch { }
+    // Execute SVG-internal scripts (DOMParser does not run them automatically).
+    // We inject them as real <script> tags into the document head so that
+    // inline onmouseover/onclick attrs (which run in window scope) can find the functions.
+    for (const sc of Array.from(svgEl.querySelectorAll('script'))) {
+      try {
+        const tag = document.createElement('script');
+        tag.textContent = sc.textContent;
+        document.head.appendChild(tag);
+      } catch (e) {
+        console.warn('SVG script inject failed', e);
+      }
+    }
 
-                  renderCrumbs();
-                }
+    try {
+      wireBridge();
+    } catch (e) {
+      toast('map falhou');
+    }
 
-                setSelected(j.partNo, j.desc, j.qty);
+    // ✅ Apply pending selection from Search page (auto-select + full breadcrumb path)
+    try {
+      const raw = sessionStorage.getItem('searchJump');
+      if (raw) {
+        const j = JSON.parse(raw);
+        const current = state.path?.length ? state.path[state.path.length - 1] : null;
 
-                const q = parseInt(j.qty || '1', 10);
-                if (!Number.isNaN(q) && q > 0) $('qtyInput').value = String(q);
+        if (j && j.svgBase && current && canonSvgBase(j.svgBase) === canonSvgBase(current)) {
+          if (Array.isArray(j.path) && j.path.length >= 2) {
+            const rootCode = j.path[0];
+            const rest = j.path.slice(1);
+            state.path = [canonSvgBase(`pai_${rootCode}`), ...rest.map(canonSvgBase)];
 
-                sessionStorage.removeItem('searchJump');
-              }
+            try {
+              history.replaceState(null, '', '#/' + state.path.join('/'));
+            } catch {
+              location.hash = '#/' + state.path.join('/');
             }
-          } catch { }
 
-        } catch (e) {
-          toast('map falhou');
+            try {
+              const map = state.searchMeta?.codeDesc || {};
+              for (const pn of state.path) {
+                const codeKey = pn.replace(/^pai_/i, '');
+                const desc = map[normPartNo(codeKey)] || (pn.match(/^pai_/i) ? 'Root assembly' : '');
+                if (desc) sessionStorage.setItem(`pnDesc:${pn}`, desc);
+              }
+            } catch { }
+
+            renderCrumbs();
+          }
+
+          setSelected(j.partNo, j.desc, j.qty);
+          const q = parseInt(j.qty || '1', 10);
+          if (!Number.isNaN(q) && q > 0) $('qtyInput').value = String(q);
+          sessionStorage.removeItem('searchJump');
         }
-        resolve();
-      }, 80);
-      done = true;
-    }, { once: true });
+      }
+    } catch { }
 
-    obj.addEventListener('error', () => {
-      if (done) return;
-      clearTimeout(to);
-      showSvgError('Erro a carregar SVG.');
-      done = true; reject(new Error('error'));
-    }, { once: true });
-
-    obj.data = url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now();
-  });
-}
-
-function getCatalogCodeFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('catalog');
-
-  if (!code) {
-    throw new Error('Missing catalog query parameter');
+  } catch (e) {
+    showSvgError('Erro a carregar SVG: ' + e.message);
+    throw e;
   }
-
-  return code;
 }
 
 async function route() {
@@ -997,17 +1009,12 @@ async function route() {
   renderCart();
 
   const last = state.path.length ? canonSvgBase(state.path[state.path.length - 1]) : null;
-  
-  const catalogCode = getCatalogCodeFromUrl();
-
-  const url = last
-    ? getSubAssemblySvgPath(catalogCode, last)
-    : getMainAssemblySvgPath(catalogCode);
+  const url = last ? svgUrl(last) : svgUrl(`pai_${state.catalog.pai_code}`);
   await loadSvg(url);
 }
 
 async function main() {
-  await loadConfig();
+  await loadCatalog();
   await loadSearchMeta();
   setupUI();
   renderCrumbs();
@@ -1026,7 +1033,7 @@ const ZOOM_MAX = 4;
 const ZOOM_MIN = 1;
 
 const viewport = document.getElementById('svgViewport');
-const obj = document.getElementById('svgObj');
+function getSvgEl() { return viewport.querySelector('svg.inlineSvg'); }
 const panHint = document.getElementById('panHint');
 
 function applyZoom() {
@@ -1034,8 +1041,7 @@ function applyZoom() {
   const h = viewport.clientHeight;
 
   // aumentar o object cria área de scroll real
-  obj.style.width = (w * zoom) + "px";
-  obj.style.height = (h * zoom) + "px";
+  const _az = getSvgEl(); if (_az) { _az.style.width = (w * zoom) + "px"; _az.style.height = (h * zoom) + "px"; }
 
   viewport.classList.toggle('canPan', zoom !== 1);
 
@@ -1055,8 +1061,7 @@ function zoomOut() {
 
 function zoomReset() {
   zoom = 1;
-  obj.style.width = "100%";
-  obj.style.height = "100%";
+  const _zr = getSvgEl(); if (_zr) { _zr.style.width = "100%"; _zr.style.height = "100%"; }
   viewport.scrollLeft = 0;
   viewport.scrollTop = 0;
   viewport.classList.remove('canPan');
@@ -1075,16 +1080,14 @@ function syncZoomState() {
     const wantH = (h * zoom) + "px";
 
     // se alguém te “desfez” o tamanho, repõe
-    if (obj.style.width !== wantW) obj.style.width = wantW;
-    if (obj.style.height !== wantH) obj.style.height = wantH;
+    const _s1 = getSvgEl(); if (_s1) { if (_s1.style.width !== wantW) _s1.style.width = wantW; if (_s1.style.height !== wantH) _s1.style.height = wantH; }
 
     viewport.classList.add('canPan');
 
   } else {
     // zoom 1: garante estado limpo
     viewport.classList.remove('canPan');
-    if (obj.style.width && obj.style.width !== "100%") obj.style.width = "100%";
-    if (obj.style.height && obj.style.height !== "100%") obj.style.height = "100%";
+    const _s2 = getSvgEl(); if (_s2) { if (_s2.style.width && _s2.style.width !== "100%") _s2.style.width = "100%"; if (_s2.style.height && _s2.style.height !== "100%") _s2.style.height = "100%"; }
 
   }
 }
@@ -1094,9 +1097,6 @@ viewport.addEventListener('mouseenter', syncZoomState);
 viewport.addEventListener('mousedown', syncZoomState, true);
 window.addEventListener('focus', syncZoomState);
 window.addEventListener('resize', () => {
-  if (zoom !== 1) syncZoomState();
-});
-obj.addEventListener('load', () => {
   if (zoom !== 1) syncZoomState();
 });
 
@@ -1120,9 +1120,6 @@ window.addEventListener('resize', () => {
 });
 
 // quando trocares o data="" para um SVG novo, isto garante zoom consistente
-obj.addEventListener('load', () => {
-  if (zoom !== 1) applyZoom();
-});
 
 // ---- PAN controller (reutilizável) ----
 const pan = (() => {
@@ -1226,4 +1223,305 @@ const pan = (() => {
   setCursor();
 
   return { onKeyDown, onKeyUp, up };
+})();
+// ============================================================
+// SEARCH MODAL
+// ============================================================
+(function () {
+  let INDEX = null;
+  let SEARCH_READY = false;
+  let searchTmr = null;
+
+  function escapeRegExp(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function normPart(s) {
+    return String(s || '').replace(/[\s\-_]/g, '').toUpperCase();
+  }
+
+  function getPathsForAssembly(code) {
+    const key = normPart(code);
+    return (INDEX?.pathsToRoot || {})[key] || [];
+  }
+
+  function tokenize(q) {
+    return String(q || '').trim().split(/\s+/).filter(Boolean);
+  }
+
+  function isDigitsOnly(t) { return /^\d+$/.test(t); }
+
+  function validateTokens(tokens) {
+    const multi = tokens.length >= 2;
+    const valid = [], ignored = [];
+    for (const t of tokens) {
+      if (!t) continue;
+      if (!multi) {
+        if (t.length >= 3) valid.push(t);
+        else ignored.push({ t });
+        continue;
+      }
+      if (isDigitsOnly(t)) {
+        if (t.length >= 5) valid.push(t); else ignored.push({ t });
+      } else {
+        if (t.length >= 2) valid.push(t); else ignored.push({ t });
+      }
+    }
+    return { valid, ignored };
+  }
+
+  function tokenMatchesEntry(entry, token) {
+    const p = entry.partNoN || '', d = entry.descN || '';
+    if (isDigitsOnly(token)) return p.includes(token) || d.includes(token);
+    return d.includes(token.toLowerCase()) || p.includes(normPart(token));
+  }
+
+  function fieldMatches(entry, token, field) {
+    const p = entry.partNoN || '', d = entry.descN || '';
+    if (field === 'partNo') return isDigitsOnly(token) ? p.includes(token) : p.includes(normPart(token));
+    return isDigitsOnly(token) ? d.includes(token) : d.includes(token.toLowerCase());
+  }
+
+  function buildHighlightedFragment(text, tokens, caseInsensitive = true) {
+    const s = String(text || '');
+    if (!s || !tokens.length) return document.createTextNode(s);
+    const intervals = [];
+    for (const t of tokens) {
+      if (!t) continue;
+      const re = new RegExp(escapeRegExp(t), caseInsensitive ? 'gi' : 'g');
+      let m;
+      while ((m = re.exec(s)) !== null) {
+        if (m[0].length === 0) { re.lastIndex++; continue; }
+        intervals.push([m.index, m.index + m[0].length]);
+      }
+    }
+    if (!intervals.length) return document.createTextNode(s);
+    intervals.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const merged = [];
+    for (const it of intervals) {
+      if (!merged.length) { merged.push(it); continue; }
+      const last = merged[merged.length - 1];
+      if (it[0] <= last[1]) last[1] = Math.max(last[1], it[1]);
+      else merged.push(it);
+    }
+    const frag = document.createDocumentFragment();
+    let i = 0;
+    for (const [a, b] of merged) {
+      if (i < a) frag.appendChild(document.createTextNode(s.slice(i, a)));
+      const strong = document.createElement('strong');
+      strong.textContent = s.slice(a, b);
+      frag.appendChild(strong);
+      i = b;
+    }
+    if (i < s.length) frag.appendChild(document.createTextNode(s.slice(i)));
+    return frag;
+  }
+
+  function getAssemblyDescFor(code) {
+    const key = normPart(code);
+    const map = INDEX?.codeDesc || null;
+    if (!map) return { desc: '', missing: true };
+    const desc = map[key];
+    return { desc: desc || '', missing: !desc };
+  }
+
+  function isMissingAssemblyDesc(code) {
+    const key = normPart(code);
+    const list = INDEX?.missingCodeDesc;
+    return Array.isArray(list) ? list.includes(key) : false;
+  }
+
+  function setSearchHeaderVisible(on) {
+    const h = document.getElementById('searchResultsHeader');
+    if (h) h.hidden = !on;
+  }
+
+  function setSearchStatus(msg) {
+    const el = document.getElementById('searchStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+  }
+
+  function renderSearchEmpty(msg) {
+    setSearchHeaderVisible(false);
+    const host = document.getElementById('searchResults');
+    if (!host) return;
+    host.innerHTML = msg ? `<div class="listEmpty">${msg}</div>` : '';
+  }
+
+  function buildHits(validTokens) {
+    const entries = INDEX?.entries || [];
+    const hits = [];
+    for (const e of entries) {
+      let ok = true;
+      for (const t of validTokens) {
+        if (!tokenMatchesEntry(e, t)) { ok = false; break; }
+      }
+      if (!ok) continue;
+      const partTokens = validTokens.filter(t => fieldMatches(e, t, 'partNo'));
+      const descTokens = validTokens.filter(t => fieldMatches(e, t, 'desc'));
+      const paths = getPathsForAssembly(e.code);
+      const effectivePaths = paths.length ? paths : [[]];
+      if (partTokens.length) {
+        for (const p of effectivePaths) hits.push({ svgBase: e.svgBase, code: e.code, path: p, matchField: 'partNo', previewText: e.partNo, highlightTokens: partTokens, partNo: e.partNo, desc: e.desc, qty: e.qty ?? null });
+      }
+      if (descTokens.length) {
+        for (const p of effectivePaths) hits.push({ svgBase: e.svgBase, code: e.code, path: p, matchField: 'desc', previewText: e.desc, highlightTokens: descTokens, partNo: e.partNo, desc: e.desc, qty: e.qty ?? null });
+      }
+    }
+    hits.sort((a, b) => {
+      if (a.matchField !== b.matchField) return a.matchField === 'partNo' ? -1 : 1;
+      const c = String(a.code).localeCompare(String(b.code));
+      return c !== 0 ? c : String(a.partNo).localeCompare(String(b.partNo));
+    });
+    return hits;
+  }
+
+  function renderHits(hits) {
+    if (!hits.length) { renderSearchEmpty('No results.'); return; }
+    setSearchHeaderVisible(true);
+    const host = document.getElementById('searchResults');
+    host.innerHTML = '';
+
+    for (const h of hits) {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'listRow searchRow';
+
+      const thumb = document.createElement('img');
+      thumb.className = 'searchThumb';
+      thumb.alt = h.svgBase;
+      thumb.src = thumbUrl(h.svgBase).replace('/thumb/', '/thumb/thumb_'); // reuse app's thumbUrl pattern
+      // fallback: build it properly
+      thumb.src = `${STORAGE_BASE}/${state.catalog?.pai_code}/thumb/thumb_${h.svgBase}.jpg`;
+      thumb.onerror = () => { thumb.onerror = null; thumb.src = thumbDefaultUrl(); };
+
+      const codeWrap = document.createElement('div');
+      codeWrap.className = 'searchCodeWrap';
+
+      const crumb = document.createElement('div');
+      crumb.className = 'searchCrumb';
+      const uiParts = (h.path && h.path.length) ? ['Catalog', ...h.path.slice(1)] : ['Catalog', h.code];
+      for (let i = 0; i < uiParts.length; i++) {
+        const seg = document.createElement('span');
+        seg.className = 'crumbSeg' + (i === uiParts.length - 1 ? ' crumbHere' : '');
+        seg.textContent = uiParts[i];
+        crumb.appendChild(seg);
+        if (i !== uiParts.length - 1) {
+          const sep = document.createElement('span');
+          sep.className = 'crumbSep';
+          sep.textContent = ' > ';
+          crumb.appendChild(sep);
+        }
+      }
+      codeWrap.appendChild(crumb);
+
+      const { desc } = getAssemblyDescFor(h.code);
+      const missing = isMissingAssemblyDesc(h.code) || !desc;
+      const codeDescEl = document.createElement('div');
+      codeDescEl.className = 'searchCodeDesc';
+      codeDescEl.textContent = desc || (missing ? 'Missing description' : '');
+      codeWrap.appendChild(codeDescEl);
+
+      const prev = document.createElement('div');
+      prev.className = 'searchPreview';
+      prev.appendChild(buildHighlightedFragment(h.previewText, h.highlightTokens, h.matchField === 'desc'));
+
+      row.append(thumb, codeWrap, prev);
+
+      row.addEventListener('click', () => {
+        try { sessionStorage.setItem('searchJump', JSON.stringify({ svgBase: h.svgBase, partNo: h.partNo, desc: h.desc, qty: h.qty, path: h.path || null })); } catch { }
+        closeSearchModal();
+        // navigate via hash — loadSvg will pick up searchJump
+        window.location.hash = '#/' + encodeURIComponent(h.svgBase);
+      });
+
+      host.appendChild(row);
+    }
+  }
+
+  function runSearch() {
+    if (!SEARCH_READY) return;
+    const q = document.getElementById('searchQ')?.value || '';
+    const tokens = tokenize(q);
+    if (!tokens.length) { setSearchStatus(''); renderSearchEmpty(''); return; }
+    const { valid, ignored } = validateTokens(tokens);
+    if (!valid.length) { setSearchStatus(''); renderSearchEmpty('Search terms are too short.'); return; }
+    const hits = buildHits(valid);
+    const ignoredMsg = ignored.length ? ('Ignored: ' + ignored.map(x => `'${x.t}'`).join(', ') + ' · ') : '';
+    setSearchStatus(ignoredMsg + `${hits.length} results`);
+    renderHits(hits);
+  }
+
+  function openSearchModal() {
+    const m = document.getElementById('searchModal');
+    if (!m) return;
+    m.hidden = false;
+    setTimeout(() => document.getElementById('searchQ')?.focus(), 50);
+  }
+
+  function closeSearchModal() {
+    const m = document.getElementById('searchModal');
+    if (!m) return;
+    m.hidden = true;
+  }
+
+  async function initSearch() {
+    // Wait for state.catalog to be populated (main() sets it)
+    if (!state.catalog?.pai_code) return;
+
+    const url = searchIndexUrl(); // reuse app.js's searchIndexUrl()
+    if (!url) return;
+
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load search index.');
+      INDEX = await res.json();
+      SEARCH_READY = true;
+    } catch (e) {
+      console.warn('Search index failed to load:', e);
+    }
+  }
+
+  // Wire up UI — app.js is loaded dynamically so 'load' has already fired; bind directly
+  (function bindSearchUI() {
+    document.getElementById('btnSearch')?.addEventListener('click', openSearchModal);
+    document.getElementById('btnSearchClose')?.addEventListener('click', closeSearchModal);
+
+    document.getElementById('searchModal')?.addEventListener('click', (e) => {
+      if (e.target?.dataset?.closeSearch) closeSearchModal();
+    });
+
+    document.getElementById('searchQ')?.addEventListener('input', () => {
+      clearTimeout(searchTmr);
+      searchTmr = setTimeout(runSearch, 80);
+    });
+
+    document.getElementById('searchQ')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); runSearch(); }
+      if (e.key === 'Escape') closeSearchModal();
+    });
+
+    document.getElementById('searchClear')?.addEventListener('click', () => {
+      const q = document.getElementById('searchQ');
+      if (q) { q.value = ''; q.focus(); }
+      setSearchStatus('');
+      renderSearchEmpty('');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const m = document.getElementById('searchModal');
+        if (m && !m.hidden) closeSearchModal();
+      }
+    });
+
+    // Load index after catalog is ready
+    const waitForCatalog = setInterval(() => {
+      if (state.catalog?.pai_code) {
+        clearInterval(waitForCatalog);
+        initSearch();
+      }
+    }, 100);
+  }());
 })();
