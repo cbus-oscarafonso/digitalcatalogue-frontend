@@ -39,8 +39,11 @@
 
     <div class="topRightTitle">Client area</div>
 
-    <div class="topRightTitle">
-      <button class="clientBtn" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">
+    <div class="topLinks">
+      <button class="clientBtn btn-admin" id="btnCatalogManager" style="display:none;" type="button">
+        Catalog Manager
+      </button>
+      <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">
         Sign out
       </button>
     </div>
@@ -103,6 +106,24 @@
       if (!session) return;
 
       window.__session = session;
+
+      // Show Catalog Manager button for admin and catalog_manager roles
+      try {
+        const { data: prof } = await window.sb
+          .from("profiles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        const role = prof?.role || "";
+        if (role === "admin" || role === "catalog_manager") {
+          const btn = document.getElementById("btnCatalogManager");
+          if (btn) {
+            btn.style.display = "";
+            btn.addEventListener("click", () => window.location.href = "catalog-manager.html");
+          }
+        }
+      } catch {}
 
       const v = Date.now();
 
