@@ -100,7 +100,9 @@ async function main() {
   catHost.innerHTML = `<div class="listEmpty">A carregar…</div>`;
 
   try {
-    const isDraftVisible = ["admin", "catalog_manager"].includes(window.__userRole || "");
+    const { data: profData } = await window.sb.from("profiles").select("role").eq("user_id", window.__session.user.id).maybeSingle();
+    const userRole = profData?.role || "";
+    const isDraftVisible = ["admin", "catalog_manager"].includes(userRole);
 
     const { data: cats, error: catErr } = await window.sb
       .from("catalogs")
