@@ -142,17 +142,30 @@ function toast(msg) {
 }
 
 async function loadCatalog() {
-  // Read catalog pai_code from URL param: index.html?catalog=50021302
   const params = new URLSearchParams(window.location.search);
   const paiCode = params.get('catalog');
-
   if (!paiCode) throw new Error('Missing ?catalog= URL parameter.');
 
-  const { data, error } = await window.sb
+  const { data: { session } } = await window.sb.auth.getSession();
+  let allowDraft = false;
+  if (session) {
+    const { data: prof } = await window.sb
+      .from('profiles')
+      .select('role')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    const role = prof?.role || '';
+    allowDraft = role === 'admin' || role === 'catalog_manager';
+  }
+
+  const query = window.sb
     .from('catalogs')
     .select('id, name, pai_code, status')
-    .eq('pai_code', paiCode)
-    .eq('status', 'published')
+    .eq('pai_code', paiCode);
+
+  const { data, error } = await (allowDraft
+    ? query.in('status', ['published', 'draft'])
+    : query.eq('status', 'published'))
     .maybeSingle();
 
   if (error) throw new Error('Failed to load catalog: ' + error.message);
