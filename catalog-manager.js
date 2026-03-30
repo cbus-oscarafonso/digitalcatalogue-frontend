@@ -412,7 +412,7 @@ function validate() {
 async function uploadFile(path, file, contentType) {
   const { error } = await window.sb.storage
     .from(BUCKET)
-    .upload(path, file, { contentType, upsert: true });
+    .upload(path, file, { contentType, upsert: false });
   if (error) throw new Error(`Upload failed for ${path}: ${error.message}`);
 }
 
