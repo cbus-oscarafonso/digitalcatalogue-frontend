@@ -100,10 +100,12 @@ async function main() {
   catHost.innerHTML = `<div class="listEmpty">A carregar…</div>`;
 
   try {
+    const isDraftVisible = ["admin", "catalog_manager"].includes(window.__userRole || "");
+
     const { data: cats, error: catErr } = await window.sb
       .from("catalogs")
-      .select("id, name, pai_code, description")
-      .eq("status", "published")
+      .select("id, name, pai_code, description, status")
+      .in("status", isDraftVisible ? ["published", "draft"] : ["published"])
       .order("name");
 
     catHost.innerHTML = "";
@@ -116,7 +118,7 @@ async function main() {
         a.className = "listRow linkRow" + (idx === 0 ? " selected" : "");
         a.href = `interactive-catalog.html?catalog=${encodeURIComponent(c.pai_code)}`;
         a.innerHTML = `
-          <div class="listTop">${escapeHtml(c.name)}</div>
+          <div class="listTop">${escapeHtml(c.name)}${c.status === "draft" ? ' <span class="draftBadge">draft</span>' : ""}</div>
           <div class="listSub">${escapeHtml(c.description || c.pai_code)}</div>
         `.trim();
         catHost.appendChild(a);

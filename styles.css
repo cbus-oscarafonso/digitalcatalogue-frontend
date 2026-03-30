@@ -1367,3 +1367,17 @@ body {
   background: #fff;
   min-width: 0;
 }
+
+
+.draftBadge {
+  font-size: 0.7em;
+  font-weight: 600;
+  color: #fff;
+  background: #f59e0b;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

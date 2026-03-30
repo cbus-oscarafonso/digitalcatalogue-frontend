@@ -119,6 +119,7 @@
           .maybeSingle();
 
         const role = prof?.role || "";
+        window.__userRole = role;
         if (role === "admin" || role === "client_manager") {
           const btnAdmin = document.getElementById("btnAdminArea");
           if (btnAdmin) {
