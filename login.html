@@ -6,172 +6,297 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login – Digital Catalogue</title>
 
-  <!-- Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Your shared Supabase client (creates window.sb) -->
+  <script>
+    (function () {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = 'styles.css?v=' + Date.now();
+      document.head.appendChild(l);
+    })();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-client.js"></script>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f3f4f6;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .card {
-      background: white;
-      padding: 32px;
-      width: 340px;
-      border-radius: 8px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-
-    input {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0 16px;
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
     }
 
-    button {
+    body {
+      font-family: "Rubik", system-ui, -apple-system, sans-serif;
+      background: var(--bg, #87878720);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px 16px;
+    }
+
+    .card {
+      background: var(--card, #fff);
+      padding: 32px;
+      width: 100%;
+      max-width: 380px;
+      border-radius: var(--radius, 14px);
+      box-shadow: var(--shadow, 0 10px 25px rgba(0, 0, 0, .08));
+      border: 1px solid var(--line, #e5e7eb);
+    }
+
+    h2 {
+      margin: 0 0 24px 0;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--blue, #003764);
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray, #878787);
+      margin-bottom: 6px;
+    }
+
+    input,
+    select {
       width: 100%;
       padding: 10px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: 10px;
+      font: 500 14px "Rubik", system-ui, sans-serif;
+      background: #fff;
+      color: #111827;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(0, 55, 100, .35);
+      box-shadow: 0 0 0 3px rgba(0, 55, 100, .12);
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--blue, #003764);
+      background: var(--gray3, rgba(135, 135, 135, .18));
+      color: #111827;
       cursor: pointer;
+      font: 700 14px "Rubik", system-ui, sans-serif;
+      white-space: nowrap;
+      transition: transform .12s ease, box-shadow .16s ease, filter .16s ease;
+      box-shadow: var(--sh3d, 0 4px 10px rgba(0, 0, 0, .08));
+      margin-bottom: 8px;
     }
 
-    .msg {
-      margin-top: 12px;
-      font-size: 14px;
-      min-height: 18px;
-      line-height: 1.3;
-      word-break: break-word;
+    .btn:hover { filter: brightness(1.04); }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      filter: none;
+      transform: none;
     }
 
-    .ok {
-      color: green;
+    .btn.primary {
+      background: var(--blue, #003764);
+      border-color: var(--blue, #003764);
+      color: #fff;
     }
 
-    .err {
-      color: red;
+    .divider {
+      height: 1px;
+      background: var(--line, #e5e7eb);
+      margin: 8px 0 16px;
     }
+
+    .extra-fields { display: none; }
+    .extra-fields.visible { display: block; }
+
+    /* Toast — inline to avoid race condition with styles.css */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 14px 24px;
+      border-radius: 10px;
+      font: 600 14px "Rubik", sans-serif;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 999;
+      text-align: center;
+      max-width: 340px;
+      white-space: pre-line;
+    }
+
+    #toast.show      { opacity: 1; }
+    #toast.toast-ok  { background: #003764; color: #fff; }
+    #toast.toast-err { background: #b91c1c; color: #fff; }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <h2>Login</h2>
+    <h2 id="cardTitle">Login</h2>
 
-    <label>Email</label>
-    <input id="email" type="email" autocomplete="email" />
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="off" />
 
-    <label>Password</label>
-    <input id="password" type="password" autocomplete="current-password" />
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="off" />
 
-    <!-- Signup-only fields -->
-    <label id="fullNameLabel" style="display:none;">Full Name</label>
-    <input id="fullName" type="text" style="display:none;" autocomplete="name" />
+    <!-- Confirm password – signup only -->
+    <div id="confirmPasswordField" class="extra-fields">
+      <label for="confirmPassword">Confirm Password</label>
+      <input id="confirmPassword" type="password" autocomplete="off" />
+    </div>
 
-    <label id="companyLabel" style="display:none;">Company Name</label>
-    <input id="companyName" type="text" style="display:none;" />
+    <!-- Full name – shown in both signup modes -->
+    <div id="sharedSignupFields" class="extra-fields">
+      <label for="fullName">Full Name</label>
+      <input id="fullName" type="text" autocomplete="off" />
+    </div>
 
-    <button id="btnLogin" type="button">Sign in</button>
-    <button id="btnLogout" type="button" style="margin-top:8px;">Sign out</button>
+    <!-- Client signup only: company name -->
+    <div id="clientSignupFields" class="extra-fields">
+      <label for="companyName">Company Name</label>
+      <input id="companyName" type="text" autocomplete="off" />
+    </div>
 
-    <button id="btnSignup" type="button" style="margin-top:8px;">
-      Create account
-    </button>
+    <!-- Internal signup only: role dropdown -->
+    <div id="internalSignupFields" class="extra-fields">
+      <label for="internalRole">Role</label>
+      <select id="internalRole">
+        <option value="internal" selected>General</option>
+        <option value="client_manager">Client Manager</option>
+        <option value="catalog_manager">Catalog Manager</option>
+      </select>
+    </div>
 
-    <div id="status" class="msg"></div>
+    <!-- LOGIN mode buttons -->
+    <div id="loginModeButtons">
+      <button id="btnLogin" class="btn primary" type="button">Sign in</button>
+      <div class="divider"></div>
+      <button id="btnShowClientSignup" class="btn" type="button">Create client user account</button>
+      <button id="btnShowInternalSignup" class="btn" type="button">Create internal user account</button>
+    </div>
+
+    <!-- CLIENT SIGNUP mode buttons -->
+    <div id="clientSignupModeButtons" style="display:none;">
+      <button id="btnDoClientSignup" class="btn primary" type="button">Create client user account</button>
+      <button id="btnCancelClientSignup" class="btn" type="button">Cancel</button>
+    </div>
+
+    <!-- INTERNAL SIGNUP mode buttons -->
+    <div id="internalSignupModeButtons" style="display:none;">
+      <button id="btnDoInternalSignup" class="btn primary" type="button">Create internal user account</button>
+      <button id="btnCancelInternalSignup" class="btn" type="button">Cancel</button>
+    </div>
   </div>
 
+  <div id="toast"></div>
+
   <script>
-    // --- REQUIRED: shared client from supabase-client.js ---
     const sb = window.sb;
     const $ = (id) => document.getElementById(id);
-    const statusEl = $("status");
 
-    const fullNameLabel = $("fullNameLabel");
-    const fullNameInput = $("fullName");
-    const companyLabel = $("companyLabel");
-    const companyInput = $("companyName");
+    let mode = "login";
+    let toastTimer = null;
+    let loginFailCount = 0;
+    let loginLocked = false;
 
-    let signupMode = false;
-
-    function setMessage(text, success = false) {
-      statusEl.textContent = text;
-      statusEl.className = "msg " + (success ? "ok" : "err");
+    // ── Toast ─────────────────────────────────────────────
+    function showToast(text, ok = true) {
+      const t = $("toast");
+      t.textContent = text;
+      t.className = ok ? "show toast-ok" : "show toast-err";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 4000);
     }
 
     if (!sb) {
-      console.error("supabase-client.js not loaded (window.sb missing)");
-      setMessage("Supabase client missing. Check supabase-client.js.", false);
+      showToast("Supabase client missing. Check supabase-client.js.", false);
     }
 
-    function setSignupMode(on) {
-      signupMode = !!on;
-
-      fullNameLabel.style.display = signupMode ? "block" : "none";
-      fullNameInput.style.display = signupMode ? "block" : "none";
-
-      companyLabel.style.display = signupMode ? "block" : "none";
-      companyInput.style.display = signupMode ? "block" : "none";
-    }
-
-    function readReturnTo() {
-      let returnTo = "index.html";
-      try {
-        const v = sessionStorage.getItem("returnTo");
-        if (v) {
-          returnTo = v;
-          sessionStorage.removeItem("returnTo");
-        }
-      } catch { }
-
-      // never loop back to login
-      if (String(returnTo).includes("login.html")) returnTo = "index.html";
-      return returnTo;
-    }
-
-    // show message if we were blocked by auth-guard
+    // Show messages if redirected here by auth-guard
     (function showAuthGuardMessage() {
       let reason = null;
       try {
         reason = sessionStorage.getItem("authError");
         if (reason) sessionStorage.removeItem("authError");
       } catch { }
-
-      if (reason === "pending") {
-        setMessage("Account created. Awaiting approval.", false);
-      } else if (reason === "profile_missing") {
-        setMessage("Account exists but profile is missing. Please contact support.", false);
-      } else if (reason === "blocked") {
-        setMessage("Account not active. Please contact support.", false);
-      }
+      if (reason === "pending")              showToast("Account created. Awaiting approval.", false);
+      else if (reason === "profile_missing") showToast("Account exists but profile is missing. Please contact support.", false);
+      else if (reason === "blocked")         showToast("Account not active. Please contact support.", false);
     })();
 
-    async function refreshStatus() {
-      if (!sb) return;
-      const { data, error } = await sb.auth.getSession();
+    // ── Loading state ─────────────────────────────────────
+    function setLoading(btnId, loading, originalText) {
+      const btn = $(btnId);
+      btn.disabled = loading;
+      btn.textContent = loading ? "Please wait…" : originalText;
+    }
 
-      if (error) {
-        setMessage("Session error: " + error.message, false);
-        return;
-      }
+    // ── Mode ──────────────────────────────────────────────
+    function setMode(newMode) {
+      mode = newMode;
+      const isLogin    = mode === "login";
+      const isClient   = mode === "client";
+      const isInternal = mode === "internal";
+      const isSignup   = isClient || isInternal;
 
-      if (data.session) {
-        setMessage("✔ Logged in as " + (data.session.user?.email || ""), true);
-      } else {
-        setMessage("Not authenticated", false);
-      }
+      if (isLogin)         $("cardTitle").textContent = "Login";
+      else if (isClient)   $("cardTitle").textContent = "Create client user account";
+      else if (isInternal) $("cardTitle").textContent = "Create internal user account";
+
+      $("confirmPasswordField").classList.toggle("visible", isSignup);
+      $("sharedSignupFields").classList.toggle("visible", isSignup);
+      $("clientSignupFields").classList.toggle("visible", isClient);
+      $("internalSignupFields").classList.toggle("visible", isInternal);
+
+      $("loginModeButtons").style.display          = isLogin    ? "" : "none";
+      $("clientSignupModeButtons").style.display   = isClient   ? "" : "none";
+      $("internalSignupModeButtons").style.display = isInternal ? "" : "none";
+
+      setTimeout(() => isLogin ? $("email").focus() : $("fullName").focus(), 50);
+    }
+
+    function clearFields() {
+      $("email").value           = "";
+      $("password").value        = "";
+      $("confirmPassword").value = "";
+      $("fullName").value        = "";
+      $("companyName").value     = "";
+      $("internalRole").value    = "internal";
+    }
+
+    function readReturnTo() {
+      let returnTo = "index.html";
+      try {
+        const v = sessionStorage.getItem("returnTo");
+        if (v) { returnTo = v; sessionStorage.removeItem("returnTo"); }
+      } catch { }
+      if (String(returnTo).includes("login.html")) returnTo = "index.html";
+      return returnTo;
+    }
+
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
     async function checkProfileStatusOrFail(userId) {
@@ -181,129 +306,145 @@
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (error) return { ok: false, reason: "rls", detail: error.message };
-      if (!data) return { ok: false, reason: "profile_missing" };
-
+      if (error) return { ok: false, reason: "rls" };
+      if (!data)  return { ok: false, reason: "profile_missing" };
       const status = String(data.status || "").toLowerCase();
       if (status !== "active") return { ok: false, reason: status };
-
       return { ok: true };
     }
 
+    // ── Sign in ──────────────────────────────────────────
     $("btnLogin").addEventListener("click", async () => {
-      if (!sb) { setMessage("Supabase client missing. Check supabase-client.js.", false); return; }
+      if (!sb) { showToast("Supabase client missing.", false); return; }
+      if (loginLocked) { showToast("Too many failed attempts. Please wait a moment.", false); return; }
 
-      const email = $("email").value.trim();
+      const email    = $("email").value.trim();
       const password = $("password").value;
 
-      if (!email || !password) {
-        setMessage("Please enter email and password.", false);
-        return;
-      }
+      if (!email || !password) { showToast("Please enter email and password.", false); return; }
+      if (!isValidEmail(email)) { showToast("Please enter a valid email address.", false); return; }
+
+      setLoading("btnLogin", true, "Sign in");
 
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
       if (error) {
-        setMessage("Login error: " + error.message, false);
+        setLoading("btnLogin", false, "Sign in");
+        loginFailCount++;
+        if (loginFailCount >= 3) {
+          loginLocked = true;
+          showToast("Too many failed attempts. Please wait 30 seconds.", false);
+          setTimeout(() => { loginLocked = false; loginFailCount = 0; }, 30000);
+        } else {
+          showToast("Login error: " + error.message, false);
+        }
         return;
       }
 
+      loginFailCount = 0;
+
       const userId = data?.user?.id;
       if (!userId) {
-        await sb.auth.signOut().catch(() => { });
-        setMessage("Login error: missing user id.", false);
+        await sb.auth.signOut().catch(() => {});
+        setLoading("btnLogin", false, "Sign in");
+        showToast("Login error: missing user id.", false);
         return;
       }
 
       const chk = await checkProfileStatusOrFail(userId);
-
       if (!chk.ok) {
-        await sb.auth.signOut().catch(() => { });
-
-        if (chk.reason === "pending") {
-          setMessage("Account created. Awaiting approval.", false);
-        } else if (chk.reason === "profile_missing") {
-          setMessage("Account exists but profile is missing. Please contact support.", false);
-        } else if (chk.reason === "blocked") {
-          setMessage("Account not active. Please contact support.", false);
-        } else if (chk.reason === "rls") {
-          setMessage("Account check failed (RLS/table). Contact support.", false);
-        } else {
-          setMessage("Account not active. Please contact support.", false);
-        }
+        await sb.auth.signOut().catch(() => {});
+        setLoading("btnLogin", false, "Sign in");
+        if (chk.reason === "pending")              showToast("Account created. Awaiting approval.", false);
+        else if (chk.reason === "profile_missing") showToast("Account exists but profile is missing. Please contact support.", false);
+        else if (chk.reason === "rls")             showToast("Account check failed. Contact support.", false);
+        else                                       showToast("Account not active. Please contact support.", false);
         return;
       }
 
-      const returnTo = readReturnTo();
-      setMessage("✔ Approved. Redirecting…", true);
-      window.location.replace(returnTo);
+      showToast("✔ Approved. Redirecting…", true);
+      setTimeout(() => window.location.replace(readReturnTo()), 800);
     });
 
-    $("btnSignup").addEventListener("click", async () => {
-      if (!sb) { setMessage("Supabase client missing. Check supabase-client.js.", false); return; }
+    // ── Mode switches ─────────────────────────────────────
+    $("btnShowClientSignup").addEventListener("click",   () => setMode("client"));
+    $("btnShowInternalSignup").addEventListener("click", () => setMode("internal"));
 
-      // First click toggles signup mode (shows fields)
-      if (!signupMode) {
-        setSignupMode(true);
-        setMessage("Fill Full Name + Company Name, then click Create account again.", true);
-        return;
+    $("btnCancelClientSignup").addEventListener("click",   () => { clearFields(); setMode("login"); });
+    $("btnCancelInternalSignup").addEventListener("click", () => { clearFields(); setMode("login"); });
+
+    // ── Client signup ─────────────────────────────────────
+    $("btnDoClientSignup").addEventListener("click", async () => {
+      if (!sb) { showToast("Supabase client missing.", false); return; }
+      const email           = $("email").value.trim();
+      const password        = $("password").value;
+      const confirmPassword = $("confirmPassword").value;
+      const fullName        = $("fullName").value.trim();
+      const companyName     = $("companyName").value.trim();
+
+      if (!email || !password || !confirmPassword || !fullName || !companyName) {
+        showToast("Please fill in all fields.", false); return;
       }
+      if (!isValidEmail(email)) { showToast("Please enter a valid email address.", false); return; }
+      if (password !== confirmPassword) { showToast("Passwords do not match.", false); return; }
 
-      const email = $("email").value.trim();
-      const password = $("password").value;
-      const fullName = fullNameInput.value.trim();
-      const companyName = companyInput.value.trim();
-
-      // No blanks allowed
-      if (!email || !password || !fullName || !companyName) {
-        setMessage("Please enter email, password, full name and company name.", false);
-        return;
-      }
+      setLoading("btnDoClientSignup", true, "Create client user account");
 
       const { error } = await sb.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: fullName,
-            requested_customer_name: companyName
-          }
-        }
+        options: { data: { full_name: fullName, requested_customer_name: companyName } }
       });
 
-      if (error) {
-        setMessage("Signup error: " + error.message, false);
-        return;
+      setLoading("btnDoClientSignup", false, "Create client user account");
+      if (error) { showToast("Signup error: " + error.message, false); return; }
+
+      clearFields();
+      setMode("login");
+      showToast("Account created. Awaiting approval.", true);
+    });
+
+    // ── Internal signup ───────────────────────────────────
+    $("btnDoInternalSignup").addEventListener("click", async () => {
+      if (!sb) { showToast("Supabase client missing.", false); return; }
+      const email           = $("email").value.trim();
+      const password        = $("password").value;
+      const confirmPassword = $("confirmPassword").value;
+      const fullName        = $("fullName").value.trim();
+      const role            = $("internalRole").value;
+
+      if (!email || !password || !confirmPassword || !fullName) {
+        showToast("Please fill in all fields.", false); return;
       }
+      if (!isValidEmail(email)) { showToast("Please enter a valid email address.", false); return; }
+      if (password !== confirmPassword) { showToast("Passwords do not match.", false); return; }
 
-      setMessage("Account created. Awaiting approval (and/or email confirmation).", false);
+      setLoading("btnDoInternalSignup", true, "Create internal user account");
 
-      // reset UI back to login mode
-      setSignupMode(false);
-      fullNameInput.value = "";
-      companyInput.value = "";
+      const { error } = await sb.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName, role: role } }
+      });
+
+      setLoading("btnDoInternalSignup", false, "Create internal user account");
+      if (error) { showToast("Signup error: " + error.message, false); return; }
+
+      clearFields();
+      setMode("login");
+      showToast("Account created. Awaiting approval.", true);
     });
 
-    $("btnLogout").addEventListener("click", async () => {
-      if (!sb) { setMessage("Supabase client missing. Check supabase-client.js.", false); return; }
-
-      const { error } = await sb.auth.signOut();
-
-      if (error) {
-        setMessage("Logout error: " + error.message, false);
-        return;
-      }
-
-      setMessage("Logged out.", true);
-      await refreshStatus();
+    // ── Enter key ─────────────────────────────────────────
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      if (mode === "login")    { $("btnLogin").click(); return; }
+      if (mode === "client")   { $("btnDoClientSignup").click(); return; }
+      if (mode === "internal") { $("btnDoInternalSignup").click(); return; }
     });
 
-    // Enter key submits login (only in login mode)
-    $("password").addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !signupMode) $("btnLogin").click();
-    });
-
-    refreshStatus();
+    // ── Init ──────────────────────────────────────────────
+    $("email").focus();
   </script>
 </body>
 

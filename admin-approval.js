@@ -5,9 +5,16 @@
 
   const sortIndicator = $("sortIndicator");
 
-  const msgEl = $("msg");
   const whoEl = $("whoami");
-  const msgCreateCustomer = $("msgCreateCustomer");
+
+  let toastTimer = null;
+  function showToast(text, ok = true) {
+    const t = $("toast");
+    t.textContent = text;
+    t.className = ok ? "show toast-ok" : "show toast-err";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 4000);
+  }
 
   const pendingDecisionPanel = $("pendingDecisionPanel");
   const existingChoiceCard = $("existingChoiceCard");
@@ -26,6 +33,7 @@
   const countryDropdownStandalone = $("countryDropdownStandalone");
 
   const pendingTbody = $("pendingTbody");
+  const pendingInternalTbody = $("pendingInternalTbody");
   const activeTbody = $("activeTbody");
 
   const existingCustomerSearchStandalone = $("existingCustomerSearchStandalone");
@@ -38,6 +46,13 @@
   const btnEditExistingCustomerNotes = $("btnEditExistingCustomerNotes");
   const btnCancelExistingCustomerNotes = $("btnCancelExistingCustomerNotes");
 
+  // Internal roles config
+  const INTERNAL_ROLES = [
+    { value: "internal", label: "General" },
+    { value: "client_manager", label: "Client Manager" },
+    { value: "catalog_manager", label: "Catalog Manager" }
+  ];
+
   let activeUsersData = [];
   let sortKey = "approved_at";
   let sortDir = "desc";
@@ -45,16 +60,7 @@
   let countriesData = [];
   let customersData = [];
 
-  function setMsg(text, ok = false) {
-    msgEl.textContent = text || "";
-    msgEl.style.color = ok ? "green" : "#b91c1c";
-  }
-
-  function setCreateCustomerMsg(text, ok = false) {
-    if (!msgCreateCustomer) return;
-    msgCreateCustomer.textContent = text || "";
-    msgCreateCustomer.style.color = ok ? "green" : "#b91c1c";
-  }
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   function esc(s) {
     return String(s ?? "")
@@ -72,7 +78,6 @@
       role: "Role",
       customer_label: "Customer"
     };
-
     const arrow = sortDir === "asc" ? "↑" : "↓";
     if (sortIndicator) {
       sortIndicator.textContent = `Sorted by: ${labelMap[sortKey]} ${arrow}`;
@@ -104,6 +109,13 @@
     return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
   }
 
+  function roleLabelForValue(value) {
+    const found = INTERNAL_ROLES.find(r => r.value === value);
+    return found ? found.label : (value || "");
+  }
+
+  // ── Country picker factory ───────────────────────────────────────────────
+
   function createCountryPicker(inputEl, dropdownEl) {
     let selectedCode = "";
     let filteredCountries = [];
@@ -112,7 +124,6 @@
 
     function render(query = "") {
       const q = String(query || "").trim().toLowerCase();
-
       filteredCountries = countriesData.filter(c => {
         const code = String(c.code || "").toLowerCase();
         const name = String(c.name || "").toLowerCase();
@@ -133,15 +144,8 @@
       `).join("");
     }
 
-    function open() {
-      if (!enabled) return;
-      dropdownEl.classList.add("open");
-    }
-
-    function close() {
-      dropdownEl.classList.remove("open");
-      activeIndex = -1;
-    }
+    function open() { if (!enabled) return; dropdownEl.classList.add("open"); }
+    function close() { dropdownEl.classList.remove("open"); activeIndex = -1; }
 
     function clear() {
       selectedCode = "";
@@ -157,9 +161,7 @@
       if (!enabled) clear();
     }
 
-    function getSelectedCode() {
-      return selectedCode;
-    }
+    function getSelectedCode() { return selectedCode; }
 
     function selectCountry(country) {
       selectedCode = country.code;
@@ -170,28 +172,16 @@
     function moveSelection(dir) {
       if (!filteredCountries.length) return;
       if (!dropdownEl.classList.contains("open")) open();
-
       activeIndex += dir;
       if (activeIndex < 0) activeIndex = filteredCountries.length - 1;
       if (activeIndex >= filteredCountries.length) activeIndex = 0;
-
       render(inputEl.value);
       const activeEl = dropdownEl.querySelector(`.pickerOption[data-idx="${activeIndex}"]`);
       if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
     }
 
-    inputEl.addEventListener("focus", () => {
-      if (!enabled) return;
-      render(inputEl.value);
-      open();
-    });
-
-    inputEl.addEventListener("click", () => {
-      if (!enabled) return;
-      render(inputEl.value);
-      open();
-    });
-
+    inputEl.addEventListener("focus", () => { if (!enabled) return; render(inputEl.value); open(); });
+    inputEl.addEventListener("click", () => { if (!enabled) return; render(inputEl.value); open(); });
     inputEl.addEventListener("input", () => {
       if (!enabled) return;
       selectedCode = "";
@@ -202,58 +192,33 @@
 
     inputEl.addEventListener("keydown", (e) => {
       if (!enabled) return;
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        moveSelection(1);
-        return;
-      }
-
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        moveSelection(-1);
-        return;
-      }
-
+      if (e.key === "ArrowDown") { e.preventDefault(); moveSelection(1); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); moveSelection(-1); return; }
       if (e.key === "Enter") {
         if (!dropdownEl.classList.contains("open")) return;
         e.preventDefault();
-
-        if (activeIndex >= 0 && filteredCountries[activeIndex]) {
-          selectCountry(filteredCountries[activeIndex]);
-        } else if (filteredCountries.length === 1) {
-          selectCountry(filteredCountries[0]);
-        }
+        if (activeIndex >= 0 && filteredCountries[activeIndex]) selectCountry(filteredCountries[activeIndex]);
+        else if (filteredCountries.length === 1) selectCountry(filteredCountries[0]);
         return;
       }
-
-      if (e.key === "Escape") {
-        close();
-      }
+      if (e.key === "Escape") close();
     });
 
     dropdownEl.addEventListener("mousedown", (e) => {
       const opt = e.target.closest(".pickerOption");
       if (!opt) return;
       const idx = Number(opt.getAttribute("data-idx"));
-      if (!Number.isNaN(idx) && filteredCountries[idx]) {
-        selectCountry(filteredCountries[idx]);
-      }
+      if (!Number.isNaN(idx) && filteredCountries[idx]) selectCountry(filteredCountries[idx]);
     });
 
     document.addEventListener("click", (e) => {
-      if (e.target !== inputEl && !dropdownEl.contains(e.target)) {
-        close();
-      }
+      if (e.target !== inputEl && !dropdownEl.contains(e.target)) close();
     });
 
-    return {
-      render,
-      clear,
-      setEnabled,
-      getSelectedCode
-    };
+    return { render, clear, setEnabled, getSelectedCode };
   }
+
+  // ── Customer autocomplete factory ────────────────────────────────────────
 
   function createCustomerAutocomplete(inputEl, dropdownEl, onPicked) {
     let selectedId = "";
@@ -283,15 +248,8 @@
       `).join("");
     }
 
-    function open() {
-      if (!enabled) return;
-      dropdownEl.classList.add("open");
-    }
-
-    function close() {
-      dropdownEl.classList.remove("open");
-      activeIndex = -1;
-    }
+    function open() { if (!enabled) return; dropdownEl.classList.add("open"); }
+    function close() { dropdownEl.classList.remove("open"); activeIndex = -1; }
 
     function clear() {
       selectedId = "";
@@ -302,9 +260,7 @@
       if (onPicked) onPicked(null);
     }
 
-    function getSelectedId() {
-      return selectedId;
-    }
+    function getSelectedId() { return selectedId; }
 
     function setEnabled(v) {
       enabled = !!v;
@@ -322,28 +278,16 @@
     function moveSelection(dir) {
       if (!filteredCustomers.length) return;
       if (!dropdownEl.classList.contains("open")) open();
-
       activeIndex += dir;
       if (activeIndex < 0) activeIndex = filteredCustomers.length - 1;
       if (activeIndex >= filteredCustomers.length) activeIndex = 0;
-
       render(inputEl.value);
       const activeEl = dropdownEl.querySelector(`.pickerOption[data-idx="${activeIndex}"]`);
       if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
     }
 
-    inputEl.addEventListener("focus", () => {
-      if (!enabled) return;
-      render(inputEl.value);
-      open();
-    });
-
-    inputEl.addEventListener("click", () => {
-      if (!enabled) return;
-      render(inputEl.value);
-      open();
-    });
-
+    inputEl.addEventListener("focus", () => { if (!enabled) return; render(inputEl.value); open(); });
+    inputEl.addEventListener("click", () => { if (!enabled) return; render(inputEl.value); open(); });
     inputEl.addEventListener("input", () => {
       if (!enabled) return;
       selectedId = "";
@@ -354,69 +298,49 @@
 
     inputEl.addEventListener("keydown", (e) => {
       if (!enabled) return;
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        moveSelection(1);
-        return;
-      }
-
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        moveSelection(-1);
-        return;
-      }
-
+      if (e.key === "ArrowDown") { e.preventDefault(); moveSelection(1); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); moveSelection(-1); return; }
       if (e.key === "Enter") {
         if (!dropdownEl.classList.contains("open")) return;
         e.preventDefault();
-        if (activeIndex >= 0 && filteredCustomers[activeIndex]) {
-          selectCustomer(filteredCustomers[activeIndex]);
-        } else if (filteredCustomers.length === 1) {
-          selectCustomer(filteredCustomers[0]);
-        }
+        if (activeIndex >= 0 && filteredCustomers[activeIndex]) selectCustomer(filteredCustomers[activeIndex]);
+        else if (filteredCustomers.length === 1) selectCustomer(filteredCustomers[0]);
         return;
       }
-
-      if (e.key === "Escape") {
-        close();
-      }
+      if (e.key === "Escape") close();
     });
 
     dropdownEl.addEventListener("mousedown", (e) => {
       const opt = e.target.closest(".pickerOption");
       if (!opt) return;
       const idx = Number(opt.getAttribute("data-idx"));
-      if (!Number.isNaN(idx) && filteredCustomers[idx]) {
-        selectCustomer(filteredCustomers[idx]);
-      }
+      if (!Number.isNaN(idx) && filteredCustomers[idx]) selectCustomer(filteredCustomers[idx]);
     });
 
     document.addEventListener("click", (e) => {
-      if (e.target !== inputEl && !dropdownEl.contains(e.target)) {
-        close();
-      }
+      if (e.target !== inputEl && !dropdownEl.contains(e.target)) close();
     });
 
-    return {
-      render,
-      clear,
-      setEnabled,
-      getSelectedId
-    };
+    return { render, clear, setEnabled, getSelectedId };
   }
+
+  // ── Pickers init ─────────────────────────────────────────────────────────
 
   const pendingCountryPicker = createCountryPicker(countrySearchPending, countryDropdownPending);
   const standaloneCountryPicker = createCountryPicker(countrySearchStandalone, countryDropdownStandalone);
 
-  const pendingExistingCustomerPicker = createCustomerAutocomplete(customersSelect, customerSuggestDropdownPending, (customer) => {
-    if (customer) {
-      newCustomerNamePending.value = "";
-      customerNotesPending.value = "";
-      pendingCountryPicker.clear();
+  const pendingExistingCustomerPicker = createCustomerAutocomplete(
+    customersSelect,
+    customerSuggestDropdownPending,
+    (customer) => {
+      if (customer) {
+        newCustomerNamePending.value = "";
+        customerNotesPending.value = "";
+        pendingCountryPicker.clear();
+      }
+      setPendingModeUI();
     }
-    setPendingModeUI();
-  });
+  );
 
   let selectedExistingStandaloneCustomer = null;
   let existingStandaloneNotesEditMode = false;
@@ -444,6 +368,8 @@
       fillExistingStandaloneCustomerDetails(customer);
     }
   );
+
+  // ── Pending client users UI mode ─────────────────────────────────────────
 
   function setPendingModeUI() {
     const existingSelected = !!pendingExistingCustomerPicker.getSelectedId() || !!customersSelect.value.trim();
@@ -477,7 +403,7 @@
     customerNotesPending.value = "";
     pendingCountryPicker.clear();
     setPendingModeUI();
-    setMsg("Pending approval choice cleared.", true);
+    showToast("Pending approval choice cleared.", true);
   }
 
   function clearStandaloneCreate() {
@@ -497,8 +423,10 @@
     btnEditExistingCustomerNotes.textContent = "Edit notes";
     btnCancelExistingCustomerNotes.classList.add("hidden");
 
-    setCreateCustomerMsg("Standalone customer form cleared.", true);
+    showToast("Standalone customer form cleared.", true);
   }
+
+  // ── Data loaders ─────────────────────────────────────────────────────────
 
   async function loadCountries() {
     const { data, error } = await sb
@@ -506,12 +434,7 @@
       .select("code,name")
       .order("name", { ascending: true });
 
-    if (error) {
-      console.error("loadCountries error:", error);
-      setMsg("Failed to load countries: " + error.message, false);
-      return;
-    }
-
+    if (error) { console.error("loadCountries error:", error); showToast("Failed to load countries: " + error.message, false); return; }
     countriesData = data || [];
     pendingCountryPicker.render("");
     standaloneCountryPicker.render("");
@@ -523,12 +446,7 @@
       .select("id,name,code")
       .order("name", { ascending: true });
 
-    if (error) {
-      console.error("loadCustomers error:", error);
-      setMsg("Failed to load customers: " + error.message, false);
-      return;
-    }
-
+    if (error) { console.error("loadCustomers error:", error); showToast("Failed to load customers: " + error.message, false); return; }
     customersData = data || [];
     pendingExistingCustomerPicker.render("");
     existingStandaloneCustomerPicker.render("");
@@ -550,60 +468,121 @@
     return data;
   }
 
-  function setExistingStandaloneNotesEditMode(editing) {
-    existingStandaloneNotesEditMode = !!editing;
+  // ── loadPending – client users only (role = 'customer') ──────────────────
 
-    existingCustomerNotesStandalone.disabled = !editing;
-    btnEditExistingCustomerNotes.textContent = editing ? "Save notes" : "Edit notes";
-    btnCancelExistingCustomerNotes.classList.toggle("hidden", !editing);
-  }
+  async function loadPending() {
+    pendingTbody.innerHTML = `<tr><td colspan="5">Loading…</td></tr>`;
 
-  async function fillExistingStandaloneCustomerDetails(customer) {
-    const full = await fetchCustomerFull(customer.id);
-
-    selectedExistingStandaloneCustomer = full;
-    existingStandaloneOriginalNotes = full.notes || "";
-
-    existingCustomerCodeStandalone.value = full.code || "";
-    existingCustomerNameStandalone.value = full.name || "";
-    existingCustomerCountryStandalone.value = full.country || "";
-    existingCustomerNotesStandalone.value = full.notes || "";
-
-    existingCustomerDetailsStandalone.classList.remove("hidden");
-    setExistingStandaloneNotesEditMode(false);
-  }
-
-  async function saveExistingStandaloneCustomerNotes() {
-    if (!selectedExistingStandaloneCustomer?.id) {
-      throw new Error("No existing customer selected.");
-    }
-
-    const newNotes = existingCustomerNotesStandalone.value.trim();
-
-    const { error } = await sb
-      .from("customers")
-      .update({
-        notes: newNotes || null
-      })
-      .eq("id", selectedExistingStandaloneCustomer.id);
+    const { data, error } = await sb
+      .from("profiles")
+      .select("user_id, role, requested_customer_name, requested_email, requested_full_name, created_at")
+      .eq("status", "pending")
+      .eq("role", "customer")
+      .order("created_at", { ascending: false });
 
     if (error) {
-      throw new Error("Failed to save notes: " + error.message);
+      console.error("loadPending error:", error);
+      pendingTbody.innerHTML = `<tr><td colspan="5">Failed to load pending users: ${esc(error.message)}</td></tr>`;
+      showToast("Failed to load pending users: " + error.message, false);
+      return;
     }
 
-    existingStandaloneOriginalNotes = newNotes;
-    selectedExistingStandaloneCustomer.notes = newNotes;
+    if (!data || data.length === 0) {
+      pendingDecisionPanel.classList.add("hidden");
+      pendingTbody.innerHTML = `<tr><td colspan="5">No pending client users 🎉</td></tr>`;
+      return;
+    }
 
-    await loadCustomers();
-    setExistingStandaloneNotesEditMode(false);
-    setCreateCustomerMsg("Customer notes saved.", true);
+    pendingDecisionPanel.classList.remove("hidden");
+
+    pendingTbody.innerHTML = data.map((p) => {
+      const created = p.created_at ? formatDate(p.created_at) : "";
+      const display = makeDisplayName(p.requested_full_name);
+      const email = p.requested_email || "";
+
+      return `
+        <tr data-user-id="${esc(p.user_id)}" data-panel="client">
+          <td><span class="pill">pending</span></td>
+          <td>
+            <strong>${esc(display || "(no name)")}</strong><br>
+            <span class="small">${esc(email || "(no email)")}</span><br>
+            <span class="mono small">${esc(p.user_id)}</span>
+          </td>
+          <td>${esc(p.requested_customer_name || "")}</td>
+          <td class="small">${esc(created)}</td>
+          <td>
+            <div class="actions">
+              <button class="btn primary" data-action="approve">Approve</button>
+              <button class="btn btn-danger" data-action="reject">Reject</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
 
-  function cancelExistingStandaloneCustomerNotesEdit() {
-    existingCustomerNotesStandalone.value = existingStandaloneOriginalNotes || "";
-    setExistingStandaloneNotesEditMode(false);
-    setCreateCustomerMsg("", true);
+  // ── loadPendingInternal – internal roles only ────────────────────────────
+
+  const INTERNAL_ROLE_VALUES = INTERNAL_ROLES.map(r => r.value);
+
+  async function loadPendingInternal() {
+    pendingInternalTbody.innerHTML = `<tr><td colspan="5">Loading…</td></tr>`;
+
+    const { data, error } = await sb
+      .from("profiles")
+      .select("user_id, role, requested_email, requested_full_name, created_at")
+      .eq("status", "pending")
+      .in("role", INTERNAL_ROLE_VALUES)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("loadPendingInternal error:", error);
+      pendingInternalTbody.innerHTML = `<tr><td colspan="5">Failed to load pending internal users: ${esc(error.message)}</td></tr>`;
+      showToast("Failed to load pending internal users: " + error.message, false);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      pendingInternalTbody.innerHTML = `<tr><td colspan="5">No pending internal users 🎉</td></tr>`;
+      return;
+    }
+
+    pendingInternalTbody.innerHTML = data.map((p) => {
+      const created = p.created_at ? formatDate(p.created_at) : "";
+      const display = makeDisplayName(p.requested_full_name);
+      const email = p.requested_email || "";
+      const currentRole = p.role || "general";
+
+      const roleOptions = INTERNAL_ROLES.map(r =>
+        `<option value="${esc(r.value)}" ${r.value === currentRole ? "selected" : ""}>${esc(r.label)}</option>`
+      ).join("");
+
+      return `
+        <tr data-user-id="${esc(p.user_id)}" data-panel="internal">
+          <td><span class="pill">pending</span></td>
+          <td>
+            <strong>${esc(display || "(no name)")}</strong><br>
+            <span class="small">${esc(email || "(no email)")}</span><br>
+            <span class="mono small">${esc(p.user_id)}</span>
+          </td>
+          <td>
+            <select class="roleSelectInline" data-user-id="${esc(p.user_id)}">
+              ${roleOptions}
+            </select>
+          </td>
+          <td class="small">${esc(created)}</td>
+          <td>
+            <div class="actions">
+              <button class="btn primary" data-action="approve">Approve</button>
+              <button class="btn btn-danger" data-action="reject">Reject</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
+
+  // ── Approve / reject ─────────────────────────────────────────────────────
 
   async function createCustomerRecord({ name, countryCode, notes }) {
     const cleanName = String(name || "").trim().replace(/\s+/g, " ");
@@ -611,20 +590,12 @@
 
     if (!cleanName) throw new Error("Customer name is required.");
     if (!cleanCountry) throw new Error("Country is required.");
-    if (checkCustomerDuplicate(cleanName)) {
-      throw new Error("A customer with this name already exists.");
-    }
+    if (checkCustomerDuplicate(cleanName)) throw new Error("A customer with this name already exists.");
 
     const code = makeCustomerCode(cleanName);
-
     const { data, error } = await sb
       .from("customers")
-      .insert([{
-        name: cleanName,
-        code,
-        country: cleanCountry,
-        notes: String(notes || "").trim() || null
-      }])
+      .insert([{ name: cleanName, code, country: cleanCountry, notes: String(notes || "").trim() || null }])
       .select("id")
       .single();
 
@@ -641,112 +612,43 @@
     const usingExisting = !!selectedId;
     const usingNew = !!newName;
 
-    if (usingExisting && usingNew) {
-      throw new Error("Choose one option only: use existing customer OR create new customer.");
-    }
-
-    if (!usingExisting && !usingNew) {
-      throw new Error("Choose one option: select an existing customer OR create a new customer.");
-    }
-
+    if (usingExisting && usingNew) throw new Error("Choose one option only: use existing customer OR create new customer.");
+    if (!usingExisting && !usingNew) throw new Error("Choose one option: select an existing customer OR create a new customer.");
     if (usingExisting) return selectedId;
 
-    return await createCustomerRecord({
-      name: newName,
-      countryCode,
-      notes
-    });
+    return await createCustomerRecord({ name: newName, countryCode, notes });
   }
 
-  const session = await requireAuth("login.html", { reveal: false });
-  if (!session) return;
-
-  const myUserId = session.user.id;
-  whoEl.textContent = `Logged in as ${session.user.email || myUserId}`;
-
-  const { data: myProf, error: myProfErr } = await sb
-    .from("profiles")
-    .select("role,status")
-    .eq("user_id", myUserId)
-    .maybeSingle();
-
-  if (myProfErr || !myProf || String(myProf.role) !== "admin" || String(myProf.status) !== "active") {
-    try { sessionStorage.setItem("authError", "blocked"); } catch { }
-    await sb.auth.signOut().catch(() => { });
-    window.location.replace("login.html");
-    return;
-  }
-
-  if (window.revealPage) window.revealPage();
-  else document.documentElement.style.visibility = "visible";
-
-  async function loadPending() {
-    pendingTbody.innerHTML = `<tr><td colspan="5">Loading…</td></tr>`;
-
-    const { data, error } = await sb
-      .from("profiles")
-      .select("user_id, requested_customer_name, requested_email, requested_full_name, created_at")
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("loadPending error:", error);
-      pendingTbody.innerHTML = `<tr><td colspan="5">Failed to load pending users: ${esc(error.message)}</td></tr>`;
-      setMsg("Failed to load pending users: " + error.message, false);
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      pendingDecisionPanel.classList.add("hidden");
-      pendingTbody.innerHTML = `<tr><td colspan="5">No pending users 🎉</td></tr>`;
-      return;
-    }
-
-    pendingDecisionPanel.classList.remove("hidden");
-
-    pendingTbody.innerHTML = data.map((p) => {
-      const created = p.created_at ? formatDate(p.created_at) : "";
-      const display = makeDisplayName(p.requested_full_name);
-      const email = p.requested_email || "";
-
-      return `
-        <tr data-user-id="${esc(p.user_id)}">
-          <td><span class="pill">pending</span></td>
-          <td>
-            <strong>${esc(display || "(no name)")}</strong><br>
-            <span class="small">${esc(email || "(no email)")}</span><br>
-            <span class="mono small">${esc(p.user_id)}</span>
-          </td>
-          <td>${esc(p.requested_customer_name || "")}</td>
-          <td class="small">${esc(created)}</td>
-          <td>
-            <div class="actions">
-              <button class="btn btn-primary" data-action="approve">Approve</button>
-              <button class="btn btn-danger" data-action="reject">Reject</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join("");
-  }
-
-  async function approveUser(userId) {
+  async function approveClientUser(userId) {
     const customerId = await resolvePendingCustomerId();
-
-    const payload = {
-      status: "active",
-      customer_id: customerId,
-      approved_at: new Date().toISOString(),
-      approved_by: myUserId
-    };
 
     const { error } = await sb
       .from("profiles")
-      .update(payload)
+      .update({
+        status: "active",
+        customer_id: customerId,
+        approved_at: new Date().toISOString(),
+        approved_by: myUserId
+      })
       .eq("user_id", userId)
       .eq("status", "pending");
 
     if (error) throw new Error("Approving user failed: " + error.message);
+  }
+
+  async function approveInternalUser(userId, role) {
+    const { error } = await sb
+      .from("profiles")
+      .update({
+        status: "active",
+        role: role,
+        approved_at: new Date().toISOString(),
+        approved_by: myUserId
+      })
+      .eq("user_id", userId)
+      .eq("status", "pending");
+
+    if (error) throw new Error("Approving internal user failed: " + error.message);
   }
 
   async function rejectUser(userId) {
@@ -762,6 +664,8 @@
 
     if (error) throw new Error("Reject failed: " + error.message);
   }
+
+  // ── Active users ─────────────────────────────────────────────────────────
 
   async function loadActiveUsers() {
     activeTbody.innerHTML = `<tr><td colspan="7">Loading…</td></tr>`;
@@ -782,11 +686,7 @@
     }
 
     const rows = data || [];
-
-    const approverIds = [...new Set(
-      rows.map(u => u.approved_by).filter(Boolean)
-    )];
-
+    const approverIds = [...new Set(rows.map(u => u.approved_by).filter(Boolean))];
     let approverNameMap = {};
 
     if (approverIds.length) {
@@ -795,14 +695,9 @@
         .select("user_id,requested_full_name")
         .in("user_id", approverIds);
 
-      if (approversError) {
-        console.error("load approvers error:", approversError);
-      } else {
+      if (!approversError) {
         approverNameMap = Object.fromEntries(
-          (approvers || []).map(a => [
-            a.user_id,
-            makeDisplayName(a.requested_full_name || "")
-          ])
+          (approvers || []).map(a => [a.user_id, makeDisplayName(a.requested_full_name || "")])
         );
       }
     }
@@ -859,29 +754,102 @@
     }
 
     activeTbody.innerHTML = activeUsersData.map((u) => `
-    <tr>
-      <td><strong>${esc(u.display_name)}</strong></td>
-      <td>${esc(u.email)}</td>
-      <td>${esc(u.role)}</td>
-      <td>${esc(u.customer_label)}</td>
-      <td class="small">${esc(formatDate(u.created_at))}</td>
-      <td class="small">
-        ${esc(formatDate(u.approved_at))}
-        ${u.approver_name ? `<div class="small">${esc(u.approver_name)}</div>` : ""}
-      </td>
-      <td class="mono small">${esc(u.user_id)}</td>
-    </tr>
-  `).join("");
+      <tr>
+        <td><strong>${esc(u.display_name)}</strong></td>
+        <td>${esc(u.email)}</td>
+        <td>${esc(u.role)}</td>
+        <td>${esc(u.customer_label)}</td>
+        <td class="small">${esc(formatDate(u.created_at))}</td>
+        <td class="small">
+          ${esc(formatDate(u.approved_at))}
+          ${u.approver_name ? `<div class="small">${esc(u.approver_name)}</div>` : ""}
+        </td>
+        <td class="mono small">${esc(u.user_id)}</td>
+      </tr>
+    `).join("");
   }
 
+  // ── Existing customer notes helpers ──────────────────────────────────────
+
+  function setExistingStandaloneNotesEditMode(editing) {
+    existingStandaloneNotesEditMode = !!editing;
+    existingCustomerNotesStandalone.disabled = !editing;
+    btnEditExistingCustomerNotes.textContent = editing ? "Save notes" : "Edit notes";
+    btnCancelExistingCustomerNotes.classList.toggle("hidden", !editing);
+  }
+
+  async function fillExistingStandaloneCustomerDetails(customer) {
+    const full = await fetchCustomerFull(customer.id);
+    selectedExistingStandaloneCustomer = full;
+    existingStandaloneOriginalNotes = full.notes || "";
+    existingCustomerCodeStandalone.value = full.code || "";
+    existingCustomerNameStandalone.value = full.name || "";
+    existingCustomerCountryStandalone.value = full.country || "";
+    existingCustomerNotesStandalone.value = full.notes || "";
+    existingCustomerDetailsStandalone.classList.remove("hidden");
+    setExistingStandaloneNotesEditMode(false);
+  }
+
+  async function saveExistingStandaloneCustomerNotes() {
+    if (!selectedExistingStandaloneCustomer?.id) throw new Error("No existing customer selected.");
+    const newNotes = existingCustomerNotesStandalone.value.trim();
+
+    const { error } = await sb
+      .from("customers")
+      .update({ notes: newNotes || null })
+      .eq("id", selectedExistingStandaloneCustomer.id);
+
+    if (error) throw new Error("Failed to save notes: " + error.message);
+
+    existingStandaloneOriginalNotes = newNotes;
+    selectedExistingStandaloneCustomer.notes = newNotes;
+    await loadCustomers();
+    setExistingStandaloneNotesEditMode(false);
+    showToast("Customer notes saved.", true);
+  }
+
+  function cancelExistingStandaloneCustomerNotesEdit() {
+    existingCustomerNotesStandalone.value = existingStandaloneOriginalNotes || "";
+    setExistingStandaloneNotesEditMode(false);
+    
+  }
+
+  // ── Auth guard ───────────────────────────────────────────────────────────
+
+  const session = await requireAuth("login.html", { reveal: false });
+  if (!session) return;
+
+  const myUserId = session.user.id;
+  whoEl.textContent = `Logged in as ${session.user.email || myUserId}`;
+
+  const { data: myProf, error: myProfErr } = await sb
+    .from("profiles")
+    .select("role,status")
+    .eq("user_id", myUserId)
+    .maybeSingle();
+
+  if (myProfErr || !myProf || String(myProf.role) !== "admin" || String(myProf.status) !== "active") {
+    try { sessionStorage.setItem("authError", "blocked"); } catch { }
+    await sb.auth.signOut().catch(() => { });
+    window.location.replace("login.html");
+    return;
+  }
+
+  if (window.revealPage) window.revealPage();
+  else document.documentElement.style.visibility = "visible";
+
+  // ── Event listeners ──────────────────────────────────────────────────────
+
   $("btnRefresh").addEventListener("click", async () => {
-    setMsg("Refreshing…", true);
+    showToast("Refreshing…", true);
+    
     await loadCustomers();
     await loadCountries();
     await loadPending();
+    await loadPendingInternal();
     await loadActiveUsers();
     setPendingModeUI();
-    setMsg("", true);
+    
   });
 
   $("btnLogout").addEventListener("click", async () => {
@@ -904,45 +872,42 @@
 
   $("btnCreateStandaloneCustomer").addEventListener("click", async () => {
     try {
-      setCreateCustomerMsg("Creating customer…", true);
-
+      showToast("Creating customer…", true);
       await createCustomerRecord({
         name: newCustomerNameStandalone.value.trim(),
         countryCode: standaloneCountryPicker.getSelectedCode(),
         notes: customerNotesStandalone.value.trim()
       });
-
       await loadCustomers();
       await loadActiveUsers();
       clearStandaloneCreate();
-      setCreateCustomerMsg("Customer created.", true);
+      showToast("Customer created.", true);
     } catch (err) {
       console.error(err);
-      setCreateCustomerMsg(String(err?.message || err), false);
+      showToast(String(err?.message || err), false);
     }
   });
-
 
   btnEditExistingCustomerNotes.addEventListener("click", async () => {
     try {
       if (!selectedExistingStandaloneCustomer?.id) {
-        setCreateCustomerMsg("Select an existing customer first.", false);
+        showToast("Select an existing customer first.", false);
         return;
       }
 
       if (!existingStandaloneNotesEditMode) {
         existingStandaloneOriginalNotes = existingCustomerNotesStandalone.value || "";
         setExistingStandaloneNotesEditMode(true);
-        setCreateCustomerMsg("Editing notes…", true);
+        showToast("Editing notes…", true);
         existingCustomerNotesStandalone.focus();
         return;
       }
 
-      setCreateCustomerMsg("Saving notes…", true);
+      showToast("Saving notes…", true);
       await saveExistingStandaloneCustomerNotes();
     } catch (err) {
       console.error(err);
-      setCreateCustomerMsg(String(err?.message || err), false);
+      showToast(String(err?.message || err), false);
     }
   });
 
@@ -956,32 +921,20 @@
 
   newCustomerNameStandalone.addEventListener("input", () => {
     const name = newCustomerNameStandalone.value.trim();
-
-    if (!name) {
-      setCreateCustomerMsg("", true);
-      return;
-    }
-
-    if (checkCustomerDuplicate(name)) {
-      setCreateCustomerMsg("Warning: a customer with this name already exists.", false);
-    } else {
-      setCreateCustomerMsg("", true);
-    }
+    if (!name) return;
+    if (checkCustomerDuplicate(name)) showToast("Warning: a customer with this name already exists.", false);
   });
 
   newCustomerNameStandalone.addEventListener("blur", async () => {
     const name = newCustomerNameStandalone.value.trim();
     if (!name || name.length < 3) return;
-
-    if (checkCustomerDuplicate(name)) {
-      setCreateCustomerMsg("Warning: a customer with this name already exists.", false);
-    }
+    if (checkCustomerDuplicate(name)) showToast("Warning: a customer with this name already exists.", false);
   });
 
+  // Click handler for BOTH pending tables (delegated)
   pendingTbody.addEventListener("click", async (e) => {
     const btn = e.target.closest("button[data-action]");
     if (!btn) return;
-
     const tr = btn.closest("tr[data-user-id]");
     if (!tr) return;
 
@@ -989,14 +942,14 @@
     const action = btn.getAttribute("data-action");
 
     try {
-      setMsg("Working…", true);
+      showToast("Working…", true);
 
       if (action === "approve") {
-        await approveUser(userId);
-        setMsg("Approved.", true);
+        await approveClientUser(userId);
+        showToast("Approved.", true);
       } else if (action === "reject") {
         await rejectUser(userId);
-        setMsg("Rejected.", true);
+        showToast("Rejected.", true);
       }
 
       await loadCustomers();
@@ -1005,7 +958,38 @@
       clearPendingChoice();
     } catch (err) {
       console.error(err);
-      setMsg(String(err?.message || err), false);
+      showToast(String(err?.message || err), false);
+    }
+  });
+
+  pendingInternalTbody.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const tr = btn.closest("tr[data-user-id]");
+    if (!tr) return;
+
+    const userId = tr.getAttribute("data-user-id");
+    const action = btn.getAttribute("data-action");
+
+    try {
+      showToast("Working…", true);
+
+      if (action === "approve") {
+        // Read the role from the inline dropdown in this row
+        const roleSelect = tr.querySelector(`.roleSelectInline[data-user-id="${userId}"]`);
+        const role = roleSelect ? roleSelect.value : "general";
+        await approveInternalUser(userId, role);
+        showToast("Approved.", true);
+      } else if (action === "reject") {
+        await rejectUser(userId);
+        showToast("Rejected.", true);
+      }
+
+      await loadPendingInternal();
+      await loadActiveUsers();
+    } catch (err) {
+      console.error(err);
+      showToast(String(err?.message || err), false);
     }
   });
 
@@ -1014,10 +998,7 @@
       const key = th.getAttribute("data-key");
       if (!key) return;
       if (sortKey === key) sortDir = (sortDir === "asc") ? "desc" : "asc";
-      else {
-        sortKey = key;
-        sortDir = (key === "approved_at") ? "desc" : "asc";
-      }
+      else { sortKey = key; sortDir = (key === "approved_at") ? "desc" : "asc"; }
       sortAndRenderActive();
     });
   });
@@ -1028,12 +1009,15 @@
     sortAndRenderActive();
   });
 
+  // ── Init ─────────────────────────────────────────────────────────────────
+
   pendingCountryPicker.setEnabled(false);
   customerNotesPending.disabled = true;
 
   await loadCustomers();
   await loadCountries();
   await loadPending();
+  await loadPendingInternal();
   await loadActiveUsers();
   setPendingModeUI();
   updateSortIndicator();

@@ -287,19 +287,20 @@
     }
 
     .existingCustomerBox {
-      margin-top: 8px;
+      margin-top: 12px;
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: 12px;
+      padding: 12px;
+      background: #f9fafb;
     }
 
-    .pickerWrap,
-    .customerSuggestWrap {
+    .customerSuggestWrap,
+    .pickerWrap {
       position: relative;
-      width: 100%;
-      min-width: 0;
     }
 
     .pickerInput {
-      width: 100%;
-      padding-right: 34px;
+      padding-right: 28px;
     }
 
     .pickerCaret {
@@ -307,24 +308,24 @@
       right: 10px;
       top: 50%;
       transform: translateY(-50%);
+      font-size: 10px;
       color: var(--gray, #878787);
       pointer-events: none;
-      font-size: 12px;
     }
 
     .pickerDropdown {
+      display: none;
       position: absolute;
-      top: calc(100% + 6px);
+      z-index: 200;
+      top: calc(100% + 4px);
       left: 0;
       right: 0;
       background: #fff;
       border: 1px solid var(--line, #e5e7eb);
-      border-radius: 12px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
-      max-height: 260px;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .12);
+      max-height: 200px;
       overflow-y: auto;
-      z-index: 60;
-      display: none;
     }
 
     .pickerDropdown.open {
@@ -332,24 +333,17 @@
     }
 
     .pickerOption {
-      display: grid;
-      grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-      gap: 12px;
-      align-items: center;
-      padding: 10px 12px;
+      padding: 8px 12px;
       cursor: pointer;
-      background: #fff;
-      min-width: 0;
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 8px;
+      align-items: center;
     }
 
     .pickerOption:hover,
     .pickerOption.active {
-      background: #f3f4f6;
-    }
-
-    #customerSuggestDropdownPending .pickerOption,
-    #existingCustomerDropdownStandalone .pickerOption {
-      grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+      background: #f0f4f8;
     }
 
     .pickerCode {
@@ -382,6 +376,22 @@
 
     .hidden {
       display: none !important;
+    }
+
+    /* Role dropdown inside internal pending table */
+    .roleSelectInline {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line, #e5e7eb);
+      font: 500 13px "Rubik", system-ui, sans-serif;
+      background: #fff;
+      min-width: 160px;
+    }
+
+    .roleSelectInline:focus {
+      outline: none;
+      border-color: rgba(0, 55, 100, .35);
+      box-shadow: 0 0 0 3px rgba(0, 55, 100, .12);
     }
 
     @media (max-width: 1100px) {
@@ -423,9 +433,11 @@
   </header>
 
   <main class="layoutAdmin">
+
+    <!-- ── PENDING CLIENT USERS ────────────────────────── -->
     <section class="adminPanel">
       <div class="adminPanelTop">
-        <div class="panelTitleAdmin">Pending Users</div>
+        <div class="panelTitleAdmin">Pending client users</div>
 
         <div id="pendingDecisionPanel" class="hidden">
           <div class="adminSub">To approve a pending user, choose <strong>one</strong> option only:</div>
@@ -482,7 +494,6 @@
           </div>
         </div>
 
-        <div class="msg" id="msg"></div>
       </div>
 
       <div class="adminTableWrap">
@@ -505,6 +516,34 @@
       </div>
     </section>
 
+    <!-- ── PENDING INTERNAL USERS ──────────────────────── -->
+    <section class="adminPanel">
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Pending internal users</div>
+
+      </div>
+
+      <div class="adminTableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>User</th>
+              <th>Requested role</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pendingInternalTbody">
+            <tr>
+              <td colspan="5">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── ACTIVE USERS ────────────────────────────────── -->
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Active Users</div>
@@ -545,10 +584,11 @@
       </div>
     </section>
 
+    <!-- ── CUSTOMERS ───────────────────────────────────── -->
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Customers</div>
-        <div class="msg" id="msgCreateCustomer"></div>
+
       </div>
 
       <div class="adminPanelBody">
@@ -634,6 +674,31 @@
       </div>
     </section>
   </main>
+
+  <div id="toast"></div>
+
+  <style>
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 14px 24px;
+      border-radius: 10px;
+      font: 600 14px "Rubik", sans-serif;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 9999;
+      text-align: center;
+      max-width: 400px;
+      white-space: pre-line;
+    }
+    #toast.show     { opacity: 1; }
+    #toast.toast-ok  { background: #003764; color: #fff; }
+    #toast.toast-err { background: #b91c1c; color: #fff; }
+  </style>
 
   <script src="admin-approval.js"></script>
 </body>

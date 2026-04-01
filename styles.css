@@ -1381,3 +1381,25 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #003764;
+  color: #fff;
+  padding: 14px 24px;
+  border-radius: 10px;
+  font: 600 14px "Rubik", sans-serif;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 999;
+  text-align: center;
+  max-width: 320px;
+}
+.toast.show {
+  opacity: 1;
+}
