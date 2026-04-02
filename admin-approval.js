@@ -232,7 +232,7 @@
         const name = normalizeName(c.name);
         const code = String(c.code || "").toLowerCase();
         return !q || name.includes(q) || code.includes(q);
-      }).slice(0, 8);
+      });
 
       if (!filteredCustomers.length) {
         dropdownEl.innerHTML = `<div class="pickerEmpty">No existing customers</div>`;
@@ -811,7 +811,7 @@
   function cancelExistingStandaloneCustomerNotesEdit() {
     existingCustomerNotesStandalone.value = existingStandaloneOriginalNotes || "";
     setExistingStandaloneNotesEditMode(false);
-    
+
   }
 
   // ── Auth guard ───────────────────────────────────────────────────────────
@@ -842,14 +842,14 @@
 
   $("btnRefresh").addEventListener("click", async () => {
     showToast("Refreshing…", true);
-    
+
     await loadCustomers();
     await loadCountries();
     await loadPending();
     await loadPendingInternal();
     await loadActiveUsers();
     setPendingModeUI();
-    
+
   });
 
   $("btnLogout").addEventListener("click", async () => {

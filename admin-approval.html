@@ -56,6 +56,8 @@
     .adminPanelTop {
       padding: 14px 14px 10px 14px;
       border-bottom: 1px solid var(--line, #e5e7eb);
+      background: var(--blue, #003764);
+      border-radius: var(--radius, 14px) var(--radius, 14px) 0 0;
     }
 
     .adminPanelBody {
@@ -69,13 +71,13 @@
 
     .panelTitleAdmin {
       font-weight: 700;
-      color: var(--blue, #003764);
+      color: #fff;
       font-size: 14px;
     }
 
     .adminSub {
       margin-top: 8px;
-      color: var(--gray, #878787);
+      color: rgba(255,255,255,.75);
       font-size: 12px;
       line-height: 1.35;
     }
@@ -438,9 +440,10 @@
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Pending client users</div>
+      </div>
 
-        <div id="pendingDecisionPanel" class="hidden">
-          <div class="adminSub">To approve a pending user, choose <strong>one</strong> option only:</div>
+      <div id="pendingDecisionPanel" class="hidden adminPanelBody">
+        <div class="adminSub">To approve a pending user, choose <strong>one</strong> option only:</div>
 
           <div class="choiceGrid">
             <div id="existingChoiceCard" class="choiceCard">
@@ -492,8 +495,6 @@
           <div class="actions">
             <button class="btn" id="btnClearPendingChoice" type="button">Clear pending approval choice</button>
           </div>
-        </div>
-
       </div>
 
       <div class="adminTableWrap">
@@ -547,8 +548,10 @@
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Active Users</div>
+      </div>
 
-        <div class="row" style="margin-top:12px;">
+      <div class="adminPanelBody">
+        <div class="row">
           <div class="field">
             <label>Sort by</label>
             <select id="activeSortSelect">
