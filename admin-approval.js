@@ -828,7 +828,7 @@
     .eq("user_id", myUserId)
     .maybeSingle();
 
-  if (myProfErr || !myProf || String(myProf.role) !== "admin" || String(myProf.status) !== "active") {
+  if (myProfErr || !myProf || !["admin", "client_manager"].includes(myProf.role) || String(myProf.status) !== "active") {
     try { sessionStorage.setItem("authError", "blocked"); } catch { }
     await sb.auth.signOut().catch(() => { });
     window.location.replace("login.html");
