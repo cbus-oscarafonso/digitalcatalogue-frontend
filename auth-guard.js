@@ -4,12 +4,27 @@ window.revealPage = function revealPage() {
   document.documentElement.style.visibility = "visible";
 };
 
+/** Wait up to ~2 s for window.sb to be populated by supabase-client.js */
+async function _waitForSb(maxMs = 2000) {
+  if (window.sb && window.sb.auth) return true;
+  const interval = 30;
+  let elapsed = 0;
+  return new Promise((resolve) => {
+    const t = setInterval(() => {
+      elapsed += interval;
+      if (window.sb && window.sb.auth) { clearInterval(t); resolve(true); return; }
+      if (elapsed >= maxMs)            { clearInterval(t); resolve(false); }
+    }, interval);
+  });
+}
+
 window.requireAuth = async function requireAuth(redirectTo = "login.html", opts = {}) {
   const { reveal = true } = opts;
   const returnTo = location.pathname.split("/").pop() + location.hash;
 
-  // Safety: if Supabase client isn't ready, fail closed
-  if (!window.sb || !window.sb.auth) {
+  // Wait for Supabase client to be ready before failing closed
+  const sbReady = await _waitForSb();
+  if (!sbReady) {
     try { sessionStorage.setItem("returnTo", returnTo); } catch {}
     window.location.replace(redirectTo);
     return null;
@@ -76,7 +91,8 @@ window.addEventListener("pageshow", async (e) => {
 
   const returnTo = location.pathname.split("/").pop() + location.hash;
 
-  if (!window.sb || !window.sb.auth) {
+  const sbReady = await _waitForSb();
+  if (!sbReady) {
     try { sessionStorage.setItem("returnTo", returnTo); } catch {}
     window.location.replace("login.html");
     return;
@@ -99,8 +115,7 @@ window.addEventListener("pageshow", async (e) => {
       .eq("user_id", userId)
       .maybeSingle();
 
-    const status = String(prof?.status || "").toLowerCase();
-
+    // Note: check !prof BEFORE reading status to avoid false "active" on null
     if (!prof) {
       try { sessionStorage.setItem("authError", "profile_missing"); } catch {}
       try { sessionStorage.setItem("returnTo", returnTo); } catch {}
@@ -108,6 +123,8 @@ window.addEventListener("pageshow", async (e) => {
       window.location.replace("login.html");
       return;
     }
+
+    const status = String(prof.status || "").toLowerCase();
 
     if (status !== "active") {
       try { sessionStorage.setItem("authError", status || "blocked"); } catch {}
