@@ -50,15 +50,30 @@
         <span class="searchText">Search</span>
       </button>
 
-      <nav class="navTabs">
-        <button class="navTab" id="navECatalog"   style="display:none" type="button">eCatalog</button>
-        <button class="navTab" id="navClientArea" style="display:none" type="button">Client Area</button>
-        <button class="navTab" id="navAdminArea"  style="display:none" type="button">Admin Area</button>
-        <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
-      </nav>
+      <a href="client-area.html" class="clientBtn btn-client" id="clientAreaLink" title="Client area" aria-label="Client area">
+        <span class="clientIcon" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M12 0
+        c-3.3 0-6 2.7-6 6.2
+        C6 9.8 8.2 12 12 12
+        c3.8 0 6-2.2 6-5.8
+        C18 2.7 15.3 0 12 0Z" />
+            <path fill="currentColor" d="M0 24
+        c.3-5.5 4.8-9.5 8.7-10.6
+        c1 .9 2.1 1.4 3.3 1.4
+        s2.3-.5 3.3-1.4
+        C19.2 14.5 23.7 18.5 24 24Z" />
+          </svg>
+        </span>
 
-      <div class="navDivider"></div>
-      <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">Sign out</button>
+        <span class="clientText" id="clientAreaText">Client area</span>
+      </a>
+      <button id="btnAdminArea" class="clientBtn btn-admin" style="display:none;">
+        Admin area
+      </button>
+      <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">
+        Sign out
+      </button>
     </div>
   </header>
 
@@ -201,59 +216,18 @@
   </div>
 
   <script>
-    function _escHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-    async function openCatalogPicker(role) {
-      const modal = document.getElementById('catalogPickerModal');
-      if (!modal) return;
-      if (!modal._listenersAdded) {
-        modal._listenersAdded = true;
-        document.getElementById('btnCatalogPickerClose')?.addEventListener('click', () => { modal.hidden = true; });
-        document.getElementById('catalogPickerBackdrop')?.addEventListener('click', () => { modal.hidden = true; });
-      }
-      modal.hidden = false;
-      const listEl = document.getElementById('catalogPickerList');
-      listEl.innerHTML = '<div class="catPickerLoading">Loading…</div>';
-      const isDraftVisible = ['admin','catalog_manager'].includes(role);
-      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft'] : ['published']).order('name');
-      if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
-      const showStatus = isDraftVisible;
-      const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;
-      const tbody = cats.map(c=>`<tr class="catPickerRow" data-pai="${_escHtml(c.pai_code)}"><td style="font-weight:600">${_escHtml(c.name)}</td><td><code style="font-size:12px">${_escHtml(c.pai_code)}</code></td><td style="color:#6b7280">${_escHtml(c.description||'—')}</td>${showStatus?`<td><span class="catStatusBadge--${c.status}">${c.status}</span></td>`:''}</tr>`).join('');
-      listEl.innerHTML = `<table class="catPickerTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
-      listEl.querySelectorAll('.catPickerRow').forEach(tr=>tr.addEventListener('click',()=>{ window.location.href=`interactive-catalog.html?catalog=${encodeURIComponent(tr.dataset.pai)}`; }));
-    }
-    function setupNavTabs(role, currentPage) {
-      const TABS = [
-        {id:'navECatalog',  key:'ecatalog',  roles:null, href:null},
-        {id:'navClientArea',key:'clientarea',roles:null, href:'client-area.html'},
-        {id:'navAdminArea', key:'adminarea', roles:['admin','client_manager','catalog_manager'], href:'admin-approval.html'},
-        {id:'navCatalogMgr',key:'catalogmgr',roles:['admin','catalog_manager'], href:'catalog-manager.html'},
-      ];
-      for (const tab of TABS) {
-        const el = document.getElementById(tab.id); if (!el) continue;
-        const visible = !tab.roles || tab.roles.includes(role);
-        el.style.display = visible ? '' : 'none';
-        if (tab.key === currentPage) { el.classList.add('active'); }
-        else if (visible) { el.addEventListener('click', tab.href ? ()=>window.location.href=tab.href : ()=>openCatalogPicker(role)); }
-      }
-    }
-  </script>
-
-  <script>
     (async () => {
       const session = await window.requireAuth("login.html");
       if (!session) return;
 
       window.__session = session;
 
-      try {
-        const { data: prof } = await window.sb
-          .from("profiles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        setupNavTabs(prof?.role || "", "ecatalog");
-      } catch {}
+      // Put user info inside the Client area button text (keep it short)
+      const clientText = document.getElementById("clientAreaText");
+      if (clientText) {
+        const email = session.user?.email || "";
+        clientText.textContent = email ? email.split("@")[0] : "Client area";
+      }
 
       const v = Date.now();
 
@@ -266,21 +240,6 @@
       document.body.appendChild(logout);
     })();
   </script>
-  <!-- Catalog Picker Modal -->
-  <div id="catalogPickerModal" class="modalOverlay" hidden>
-    <div class="modalBackdrop" id="catalogPickerBackdrop"></div>
-    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
-      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
-        <div class="panelTitle" style="color:#fff;">Select a Catalog</div>
-      </div>
-      <div class="modalBody" style="padding:0;overflow:auto;">
-        <div id="catalogPickerList"></div>
-      </div>
-      <div class="modalFooter">
-        <button class="btn" id="btnCatalogPickerClose" type="button">Cancel</button>
-      </div>
-    </div>
-  </div>
 
 </body>
 

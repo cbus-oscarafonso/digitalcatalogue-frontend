@@ -135,7 +135,9 @@ function row(pn, desc, price, qty) {
 
 function toast(msg) {
   const t = $('toast');
+  t.classList.remove('show');
   t.textContent = msg;
+  void t.offsetWidth; // force reflow so translateX(-50%) uses the new width
   t.classList.add('show');
   clearTimeout(toast._tm);
   toast._tm = setTimeout(() => t.classList.remove('show'), 2400);
@@ -302,8 +304,11 @@ function closeOrderModal() {
 }
 
 function setupUI() {
-  function sendOrderRequest() {
+  async function sendOrderRequest() {
     if (!state.cart.length) { toast('Your cart is empty!'); return; }
+
+    const btnSend = $('btnModalSend');
+    if (btnSend) { btnSend.disabled = true; btnSend.textContent = 'Sending…'; }
 
     const dt = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
@@ -319,14 +324,47 @@ function setupUI() {
       out += `${r.partNo} | ${r.desc} | ${r.price || 'TBA'} | ${r.qty}\n`;
     }
 
-    // ===== guardar pedido no browser =====
+    // ===== guardar pedido na BD (Supabase) =====
+    try {
+      const { data: { session } } = await window.sb.auth.getSession();
+      const userId = session?.user?.id || null;
+
+      let customerId = null;
+      if (userId) {
+        const { data: prof } = await window.sb
+          .from('profiles')
+          .select('customer_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        customerId = prof?.customer_id || null;
+      }
+
+      const { error } = await window.sb.from('order_requests').insert({
+        user_id: userId,
+        content_text: out,
+        catalog_id: state.catalog?.id || null,
+        customer_id: customerId,
+      });
+
+      if (error) {
+        console.error('Supabase insert failed:', error);
+        toast('Failed to save order request. Please try again.');
+        if (btnSend) { btnSend.disabled = false; btnSend.textContent = 'Send order request'; }
+        return;
+      }
+    } catch (e) {
+      console.error('Order request error:', e);
+      toast('Failed to save order request. Please try again.');
+      if (btnSend) { btnSend.disabled = false; btnSend.textContent = 'Send order request'; }
+      return;
+    }
+
+    // ===== guardar pedido no browser (fallback local) =====
     const ts = Date.now();
     try {
       const key = 'orderRequestsLocal';
       const arr = JSON.parse(localStorage.getItem(key) || '[]');
-
       arr.unshift({ id: ts, dt: dt, content: out });
-
       localStorage.setItem(key, JSON.stringify(arr.slice(0, 200)));
     } catch (e) { }
 
@@ -356,7 +394,8 @@ function setupUI() {
     toast("We've received your order request and will get back to you shortly.");
     state.cart = [];
     renderCart();
-    closeOrderModal(); // ✅ depois de enviar, fecha o modal (faz sentido no fluxo)
+    closeOrderModal();
+    if (btnSend) { btnSend.disabled = false; btnSend.textContent = 'Send order request'; }
   }
   $('qtyDown').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) - 1)));
   $('qtyUp').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) + 1)));
@@ -399,7 +438,7 @@ function setupUI() {
   });
 
   // modal: send
-  $('btnModalSend')?.addEventListener('click', sendOrderRequest);
+  $('btnModalSend')?.addEventListener('click', () => sendOrderRequest());
 
   // tecla ESC fecha
   document.addEventListener('keydown', (e) => {

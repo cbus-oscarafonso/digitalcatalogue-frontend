@@ -289,15 +289,19 @@
 
     <div class="crumbs"></div>
 
-    <nav class="navTabs">
-      <button class="navTab" id="navECatalog"   style="display:none" type="button">eCatalog</button>
-      <button class="navTab" id="navClientArea" style="display:none" type="button">Client Area</button>
-      <button class="navTab" id="navAdminArea"  style="display:none" type="button">Admin Area</button>
-      <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
-    </nav>
+    <div class="topRightTitle">Client area</div>
 
-    <div class="navDivider"></div>
-    <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">Sign out</button>
+    <div class="topLinks">
+      <button class="clientBtn btn-admin" id="btnAdminArea" style="display:none;" type="button">
+        Admin area
+      </button>
+      <button class="clientBtn btn-admin" id="btnCatalogManager" style="display:none;" type="button">
+        Catalog Manager
+      </button>
+      <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">
+        Sign out
+      </button>
+    </div>
   </header>
 
   <main class="layout layoutClient">
@@ -343,45 +347,6 @@
   </main>
 
   <script>
-    function _escHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-    async function openCatalogPicker(role) {
-      const modal = document.getElementById('catalogPickerModal');
-      if (!modal) return;
-      if (!modal._listenersAdded) {
-        modal._listenersAdded = true;
-        document.getElementById('btnCatalogPickerClose')?.addEventListener('click', () => { modal.hidden = true; });
-        document.getElementById('catalogPickerBackdrop')?.addEventListener('click', () => { modal.hidden = true; });
-      }
-      modal.hidden = false;
-      const listEl = document.getElementById('catalogPickerList');
-      listEl.innerHTML = '<div class="catPickerLoading">Loading\u2026</div>';
-      const isDraftVisible = ['admin','catalog_manager'].includes(role);
-      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft'] : ['published']).order('name');
-      if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
-      const showStatus = isDraftVisible;
-      const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;
-      const tbody = cats.map(c=>`<tr class="catPickerRow" data-pai="${_escHtml(c.pai_code)}"><td style="font-weight:600">${_escHtml(c.name)}</td><td><code style="font-size:12px">${_escHtml(c.pai_code)}</code></td><td style="color:#6b7280">${_escHtml(c.description||'\u2014')}</td>${showStatus?`<td><span class="catStatusBadge--${c.status}">${c.status}</span></td>`:''}</tr>`).join('');
-      listEl.innerHTML = `<table class="catPickerTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
-      listEl.querySelectorAll('.catPickerRow').forEach(tr=>tr.addEventListener('click',()=>{ window.location.href=`interactive-catalog.html?catalog=${encodeURIComponent(tr.dataset.pai)}`; }));
-    }
-    function setupNavTabs(role, currentPage) {
-      const TABS = [
-        {id:'navECatalog',  key:'ecatalog',  roles:null, href:null},
-        {id:'navClientArea',key:'clientarea',roles:null, href:'client-area.html'},
-        {id:'navAdminArea', key:'adminarea', roles:['admin','client_manager','catalog_manager'], href:'admin-approval.html'},
-        {id:'navCatalogMgr',key:'catalogmgr',roles:['admin','catalog_manager'], href:'catalog-manager.html'},
-      ];
-      for (const tab of TABS) {
-        const el = document.getElementById(tab.id); if (!el) continue;
-        const visible = !tab.roles || tab.roles.includes(role);
-        el.style.display = visible ? '' : 'none';
-        if (tab.key === currentPage) { el.classList.add('active'); }
-        else if (visible) { el.addEventListener('click', tab.href ? ()=>window.location.href=tab.href : ()=>openCatalogPicker(role)); }
-      }
-    }
-  </script>
-
-  <script>
     (async () => {
       const session = await window.requireAuth("login.html");
       if (!session) return;
@@ -398,7 +363,20 @@
         const role = prof?.role || "";
         window.__userRole = role;
 
-        setupNavTabs(role, "clientarea");
+        if (role === "admin" || role === "client_manager") {
+          const btnAdmin = document.getElementById("btnAdminArea");
+          if (btnAdmin) {
+            btnAdmin.style.display = "";
+            btnAdmin.addEventListener("click", () => window.location.href = "admin-approval.html");
+          }
+        }
+        if (role === "admin" || role === "catalog_manager") {
+          const btn = document.getElementById("btnCatalogManager");
+          if (btn) {
+            btn.style.display = "";
+            btn.addEventListener("click", () => window.location.href = "catalog-manager.html");
+          }
+        }
       } catch {}
 
       const v = Date.now();
@@ -412,23 +390,6 @@
       document.body.appendChild(logout);
     })();
   </script>
-
-  <!-- Catalog Picker Modal -->
-  <div id="catalogPickerModal" class="modalOverlay" hidden>
-    <div class="modalBackdrop" id="catalogPickerBackdrop"></div>
-    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
-      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
-        <div class="panelTitle" style="color:#fff;">Select a Catalog</div>
-      </div>
-      <div class="modalBody" style="padding:0;overflow:auto;">
-        <div id="catalogPickerList"></div>
-      </div>
-      <div class="modalFooter">
-        <button class="btn" id="btnCatalogPickerClose" type="button">Cancel</button>
-      </div>
-    </div>
-  </div>
-
 </body>
 
 </html>
