@@ -3,6 +3,16 @@
   const requireAuth = window.requireAuth;
   const $ = (id) => document.getElementById(id);
 
+  function on(elOrId, eventName, handler) {
+    const el = typeof elOrId === "string" ? $(elOrId) : elOrId;
+    if (!el) {
+      console.warn(`[admin-approval] Missing element for event binding: ${typeof elOrId === "string" ? "#" + elOrId : "(element ref)"}`);
+      return null;
+    }
+    el.addEventListener(eventName, handler);
+    return el;
+  }
+
   const sortIndicator = $("sortIndicator");
 
   const whoEl = $("whoami");
@@ -180,9 +190,9 @@
       if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
     }
 
-    inputEl.addEventListener("focus", () => { if (!enabled) return; render(inputEl.value); open(); });
-    inputEl.addEventListener("click", () => { if (!enabled) return; render(inputEl.value); open(); });
-    inputEl.addEventListener("input", () => {
+    on(inputEl, "focus", () => { if (!enabled) return; render(inputEl.value); open(); });
+    on(inputEl, "click", () => { if (!enabled) return; render(inputEl.value); open(); });
+    on(inputEl, "input", () => {
       if (!enabled) return;
       selectedCode = "";
       activeIndex = -1;
@@ -190,7 +200,7 @@
       open();
     });
 
-    inputEl.addEventListener("keydown", (e) => {
+    on(inputEl, "keydown", (e) => {
       if (!enabled) return;
       if (e.key === "ArrowDown") { e.preventDefault(); moveSelection(1); return; }
       if (e.key === "ArrowUp") { e.preventDefault(); moveSelection(-1); return; }
@@ -204,7 +214,7 @@
       if (e.key === "Escape") close();
     });
 
-    dropdownEl.addEventListener("mousedown", (e) => {
+    on(dropdownEl, "mousedown", (e) => {
       const opt = e.target.closest(".pickerOption");
       if (!opt) return;
       const idx = Number(opt.getAttribute("data-idx"));
@@ -286,9 +296,9 @@
       if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
     }
 
-    inputEl.addEventListener("focus", () => { if (!enabled) return; render(inputEl.value); open(); });
-    inputEl.addEventListener("click", () => { if (!enabled) return; render(inputEl.value); open(); });
-    inputEl.addEventListener("input", () => {
+    on(inputEl, "focus", () => { if (!enabled) return; render(inputEl.value); open(); });
+    on(inputEl, "click", () => { if (!enabled) return; render(inputEl.value); open(); });
+    on(inputEl, "input", () => {
       if (!enabled) return;
       selectedId = "";
       render(inputEl.value);
@@ -296,7 +306,7 @@
       if (onPicked) onPicked(null);
     });
 
-    inputEl.addEventListener("keydown", (e) => {
+    on(inputEl, "keydown", (e) => {
       if (!enabled) return;
       if (e.key === "ArrowDown") { e.preventDefault(); moveSelection(1); return; }
       if (e.key === "ArrowUp") { e.preventDefault(); moveSelection(-1); return; }
@@ -310,7 +320,7 @@
       if (e.key === "Escape") close();
     });
 
-    dropdownEl.addEventListener("mousedown", (e) => {
+    on(dropdownEl, "mousedown", (e) => {
       const opt = e.target.closest(".pickerOption");
       if (!opt) return;
       const idx = Number(opt.getAttribute("data-idx"));
@@ -811,7 +821,6 @@
   function cancelExistingStandaloneCustomerNotesEdit() {
     existingCustomerNotesStandalone.value = existingStandaloneOriginalNotes || "";
     setExistingStandaloneNotesEditMode(false);
-
   }
 
   // ── Auth guard ───────────────────────────────────────────────────────────
@@ -820,7 +829,9 @@
   if (!session) return;
 
   const myUserId = session.user.id;
-  whoEl.textContent = `Logged in as ${session.user.email || myUserId}`;
+  if (whoEl) {
+    whoEl.textContent = `Logged in as ${session.user.email || myUserId}`;
+  }
 
   const { data: myProf, error: myProfErr } = await sb
     .from("profiles")
@@ -838,9 +849,11 @@
   if (window.revealPage) window.revealPage();
   else document.documentElement.style.visibility = "visible";
 
+  if (typeof setupNavTabs === "function") setupNavTabs(myProf.role, "adminarea");
+
   // ── Event listeners ──────────────────────────────────────────────────────
 
-  $("btnRefresh").addEventListener("click", async () => {
+  on("btnRefresh", "click", async () => {
     showToast("Refreshing…", true);
 
     await loadCustomers();
@@ -849,18 +862,17 @@
     await loadPendingInternal();
     await loadActiveUsers();
     setPendingModeUI();
-
   });
 
-  $("btnLogout").addEventListener("click", async () => {
+  on("btnLogout", "click", async () => {
     await sb.auth.signOut().catch(() => { });
     window.location.replace("login.html");
   });
 
-  $("btnClearPendingChoice").addEventListener("click", clearPendingChoice);
-  $("btnClearStandaloneCustomer").addEventListener("click", clearStandaloneCreate);
+  on("btnClearPendingChoice", "click", clearPendingChoice);
+  on("btnClearStandaloneCustomer", "click", clearStandaloneCreate);
 
-  newCustomerNamePending.addEventListener("input", () => {
+  on(newCustomerNamePending, "input", () => {
     if (newCustomerNamePending.value.trim()) {
       pendingExistingCustomerPicker.clear();
     } else {
@@ -870,7 +882,7 @@
     setPendingModeUI();
   });
 
-  $("btnCreateStandaloneCustomer").addEventListener("click", async () => {
+  on("btnCreateStandaloneCustomer", "click", async () => {
     try {
       showToast("Creating customer…", true);
       await createCustomerRecord({
@@ -888,7 +900,7 @@
     }
   });
 
-  btnEditExistingCustomerNotes.addEventListener("click", async () => {
+  on(btnEditExistingCustomerNotes, "click", async () => {
     try {
       if (!selectedExistingStandaloneCustomer?.id) {
         showToast("Select an existing customer first.", false);
@@ -911,28 +923,28 @@
     }
   });
 
-  btnCancelExistingCustomerNotes.addEventListener("click", () => {
+  on(btnCancelExistingCustomerNotes, "click", () => {
     cancelExistingStandaloneCustomerNotesEdit();
   });
 
-  existingCustomerSearchStandalone.addEventListener("input", () => {
+  on(existingCustomerSearchStandalone, "input", () => {
     existingStandaloneCustomerPicker.render(existingCustomerSearchStandalone.value);
   });
 
-  newCustomerNameStandalone.addEventListener("input", () => {
+  on(newCustomerNameStandalone, "input", () => {
     const name = newCustomerNameStandalone.value.trim();
     if (!name) return;
     if (checkCustomerDuplicate(name)) showToast("Warning: a customer with this name already exists.", false);
   });
 
-  newCustomerNameStandalone.addEventListener("blur", async () => {
+  on(newCustomerNameStandalone, "blur", async () => {
     const name = newCustomerNameStandalone.value.trim();
     if (!name || name.length < 3) return;
     if (checkCustomerDuplicate(name)) showToast("Warning: a customer with this name already exists.", false);
   });
 
   // Click handler for BOTH pending tables (delegated)
-  pendingTbody.addEventListener("click", async (e) => {
+  on(pendingTbody, "click", async (e) => {
     const btn = e.target.closest("button[data-action]");
     if (!btn) return;
     const tr = btn.closest("tr[data-user-id]");
@@ -962,7 +974,7 @@
     }
   });
 
-  pendingInternalTbody.addEventListener("click", async (e) => {
+  on(pendingInternalTbody, "click", async (e) => {
     const btn = e.target.closest("button[data-action]");
     if (!btn) return;
     const tr = btn.closest("tr[data-user-id]");
@@ -975,7 +987,6 @@
       showToast("Working…", true);
 
       if (action === "approve") {
-        // Read the role from the inline dropdown in this row
         const roleSelect = tr.querySelector(`.roleSelectInline[data-user-id="${userId}"]`);
         const role = roleSelect ? roleSelect.value : "general";
         await approveInternalUser(userId, role);
@@ -1003,7 +1014,7 @@
     });
   });
 
-  $("activeSortSelect").addEventListener("change", (e) => {
+  on("activeSortSelect", "change", (e) => {
     sortKey = e.target.value;
     sortDir = (sortKey === "approved_at") ? "desc" : "asc";
     sortAndRenderActive();
