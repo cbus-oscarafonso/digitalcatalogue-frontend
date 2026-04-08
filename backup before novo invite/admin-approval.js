@@ -14,6 +14,7 @@
   }
 
   const sortIndicator = $("sortIndicator");
+
   const whoEl = $("whoami");
 
   let toastTimer = null;
@@ -25,87 +26,40 @@
     toastTimer = setTimeout(() => t.classList.remove("show"), 4000);
   }
 
-  // ── User-exists modal ─────────────────────────────────────────────────────
+  const pendingDecisionPanel = $("pendingDecisionPanel");
+  const existingChoiceCard = $("existingChoiceCard");
+  const newChoiceCard = $("newChoiceCard");
 
-  const ROLE_LABELS = {
-    admin:           "Administrator",
-    client_manager:  "Client Manager",
-    catalog_manager: "Catalog Manager",
-    internal:        "Internal User",
-    customer:        "Customer",
-  };
-
-  function showUserExistsModal({ status, role, customer }) {
-    const roleLabel = ROLE_LABELS[role] || role || "unknown role";
-    let msg = `A user with this email already exists in the system with status <strong>${status}</strong> and role <strong>${roleLabel}</strong>`;
-    if (role === "customer" && customer) {
-      msg += ` (customer: <strong>${_esc(customer)}</strong>)`;
-    }
-    msg += ".<br><br>You cannot send a new invite to an existing user.";
-    $("userExistsMessage").innerHTML = msg;
-    $("userExistsModal").hidden = false;
-  }
-
-  function _esc(s) {
-    return String(s ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;");
-  }
-
-  on("btnUserExistsDismiss", "click", () => { $("userExistsModal").hidden = true; });
-  on("userExistsBackdrop",   "click", () => { $("userExistsModal").hidden = true; });
-
-  // ── Element references ────────────────────────────────────────────────────
-
-  const pendingDecisionPanel  = $("pendingDecisionPanel");
-  const existingChoiceCard    = $("existingChoiceCard");
-  const newChoiceCard         = $("newChoiceCard");
-
-  const customersSelect               = $("customersSelect");
+  const customersSelect = $("customersSelect");
   const customerSuggestDropdownPending = $("customerSuggestDropdownPending");
-  const newCustomerNamePending        = $("newCustomerNamePending");
-  const customerNotesPending          = $("customerNotesPending");
-  const countrySearchPending          = $("countrySearchPending");
-  const countryDropdownPending        = $("countryDropdownPending");
+  const newCustomerNamePending = $("newCustomerNamePending");
+  const customerNotesPending = $("customerNotesPending");
+  const countrySearchPending = $("countrySearchPending");
+  const countryDropdownPending = $("countryDropdownPending");
 
-  const newCustomerNameStandalone  = $("newCustomerNameStandalone");
-  const customerNotesStandalone    = $("customerNotesStandalone");
-  const countrySearchStandalone    = $("countrySearchStandalone");
-  const countryDropdownStandalone  = $("countryDropdownStandalone");
+  const newCustomerNameStandalone = $("newCustomerNameStandalone");
+  const customerNotesStandalone = $("customerNotesStandalone");
+  const countrySearchStandalone = $("countrySearchStandalone");
+  const countryDropdownStandalone = $("countryDropdownStandalone");
 
-  const pendingTbody         = $("pendingTbody");
+  const pendingTbody = $("pendingTbody");
   const pendingInternalTbody = $("pendingInternalTbody");
-  const activeTbody          = $("activeTbody");
+  const activeTbody = $("activeTbody");
 
-  const existingCustomerSearchStandalone   = $("existingCustomerSearchStandalone");
+  const existingCustomerSearchStandalone = $("existingCustomerSearchStandalone");
   const existingCustomerDropdownStandalone = $("existingCustomerDropdownStandalone");
-  const existingCustomerDetailsStandalone  = $("existingCustomerDetailsStandalone");
-  const existingCustomerCodeStandalone     = $("existingCustomerCodeStandalone");
-  const existingCustomerNameStandalone     = $("existingCustomerNameStandalone");
-  const existingCustomerCountryStandalone  = $("existingCustomerCountryStandalone");
-  const existingCustomerNotesStandalone    = $("existingCustomerNotesStandalone");
-  const btnEditExistingCustomerNotes       = $("btnEditExistingCustomerNotes");
-  const btnCancelExistingCustomerNotes     = $("btnCancelExistingCustomerNotes");
-
-  // Invite panel elements
-  const inviteRoleCheck       = $("inviteRoleCheck");
-  const inviteRoleSelect      = $("inviteRoleSelect");
-  const inviteCustomerSection = $("inviteCustomerSection");
-  const inviteExistingCard    = $("inviteExistingChoiceCard");
-  const inviteNewCard         = $("inviteNewChoiceCard");
-  const inviteCustomersSelect = $("inviteCustomersSelect");
-  const inviteCustomerDropdown = $("inviteCustomerDropdown");
-  const inviteNewCustomerName = $("inviteNewCustomerName");
-  const inviteCustomerNotes   = $("inviteCustomerNotes");
-  const inviteCountrySearch   = $("inviteCountrySearch");
-  const inviteCountryDropdown = $("inviteCountryDropdown");
+  const existingCustomerDetailsStandalone = $("existingCustomerDetailsStandalone");
+  const existingCustomerCodeStandalone = $("existingCustomerCodeStandalone");
+  const existingCustomerNameStandalone = $("existingCustomerNameStandalone");
+  const existingCustomerCountryStandalone = $("existingCustomerCountryStandalone");
+  const existingCustomerNotesStandalone = $("existingCustomerNotesStandalone");
+  const btnEditExistingCustomerNotes = $("btnEditExistingCustomerNotes");
+  const btnCancelExistingCustomerNotes = $("btnCancelExistingCustomerNotes");
 
   // Internal roles config
   const INTERNAL_ROLES = [
-    { value: "internal",        label: "General" },
-    { value: "client_manager",  label: "Client Manager" },
+    { value: "internal", label: "General" },
+    { value: "client_manager", label: "Client Manager" },
     { value: "catalog_manager", label: "Catalog Manager" }
   ];
 
@@ -129,9 +83,9 @@
 
   function updateSortIndicator() {
     const labelMap = {
-      approved_at:    "Date of approval",
-      display_name:   "User",
-      role:           "Role",
+      approved_at: "Date of approval",
+      display_name: "User",
+      role: "Role",
       customer_label: "Customer"
     };
     const arrow = sortDir === "asc" ? "↑" : "↓";
@@ -249,7 +203,7 @@
     on(inputEl, "keydown", (e) => {
       if (!enabled) return;
       if (e.key === "ArrowDown") { e.preventDefault(); moveSelection(1); return; }
-      if (e.key === "ArrowUp")   { e.preventDefault(); moveSelection(-1); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); moveSelection(-1); return; }
       if (e.key === "Enter") {
         if (!dropdownEl.classList.contains("open")) return;
         e.preventDefault();
@@ -355,7 +309,7 @@
     on(inputEl, "keydown", (e) => {
       if (!enabled) return;
       if (e.key === "ArrowDown") { e.preventDefault(); moveSelection(1); return; }
-      if (e.key === "ArrowUp")   { e.preventDefault(); moveSelection(-1); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); moveSelection(-1); return; }
       if (e.key === "Enter") {
         if (!dropdownEl.classList.contains("open")) return;
         e.preventDefault();
@@ -382,9 +336,8 @@
 
   // ── Pickers init ─────────────────────────────────────────────────────────
 
-  const pendingCountryPicker    = createCountryPicker(countrySearchPending,  countryDropdownPending);
+  const pendingCountryPicker = createCountryPicker(countrySearchPending, countryDropdownPending);
   const standaloneCountryPicker = createCountryPicker(countrySearchStandalone, countryDropdownStandalone);
-  const inviteCountryPicker     = createCountryPicker(inviteCountrySearch,   inviteCountryDropdown);
 
   const pendingExistingCustomerPicker = createCustomerAutocomplete(
     customersSelect,
@@ -392,7 +345,7 @@
     (customer) => {
       if (customer) {
         newCustomerNamePending.value = "";
-        customerNotesPending.value   = "";
+        customerNotesPending.value = "";
         pendingCountryPicker.clear();
       }
       setPendingModeUI();
@@ -400,22 +353,22 @@
   );
 
   let selectedExistingStandaloneCustomer = null;
-  let existingStandaloneNotesEditMode    = false;
-  let existingStandaloneOriginalNotes    = "";
+  let existingStandaloneNotesEditMode = false;
+  let existingStandaloneOriginalNotes = "";
 
   const existingStandaloneCustomerPicker = createCustomerAutocomplete(
     existingCustomerSearchStandalone,
     existingCustomerDropdownStandalone,
     (customer) => {
       selectedExistingStandaloneCustomer = customer || null;
-      existingStandaloneNotesEditMode    = false;
+      existingStandaloneNotesEditMode = false;
 
       if (!customer) {
         existingCustomerDetailsStandalone.classList.add("hidden");
-        existingCustomerCodeStandalone.value    = "";
-        existingCustomerNameStandalone.value    = "";
+        existingCustomerCodeStandalone.value = "";
+        existingCustomerNameStandalone.value = "";
         existingCustomerCountryStandalone.value = "";
-        existingCustomerNotesStandalone.value   = "";
+        existingCustomerNotesStandalone.value = "";
         existingCustomerNotesStandalone.disabled = true;
         btnEditExistingCustomerNotes.textContent = "Edit notes";
         btnCancelExistingCustomerNotes.classList.add("hidden");
@@ -423,18 +376,6 @@
       }
 
       fillExistingStandaloneCustomerDetails(customer);
-    }
-  );
-
-  // Invite customer picker — selection drives the "existing" card mode
-  let inviteSelectedCustomer = null; // { id, name, code }
-
-  const inviteExistingCustomerPicker = createCustomerAutocomplete(
-    inviteCustomersSelect,
-    inviteCustomerDropdown,
-    (customer) => {
-      inviteSelectedCustomer = customer || null;
-      setInviteCustomerModeUI();
     }
   );
 
@@ -448,12 +389,12 @@
     if (existingSelected) {
       newChoiceCard.classList.add("is-disabled");
       newCustomerNamePending.disabled = true;
-      customerNotesPending.disabled   = true;
+      customerNotesPending.disabled = true;
       pendingCountryPicker.setEnabled(false);
     } else {
       newChoiceCard.classList.remove("is-disabled");
       newCustomerNamePending.disabled = false;
-      customerNotesPending.disabled   = !newMode;
+      customerNotesPending.disabled = !newMode;
       pendingCountryPicker.setEnabled(newMode);
     }
 
@@ -469,73 +410,25 @@
   function clearPendingChoice() {
     pendingExistingCustomerPicker.clear();
     newCustomerNamePending.value = "";
-    customerNotesPending.value   = "";
+    customerNotesPending.value = "";
     pendingCountryPicker.clear();
     setPendingModeUI();
     showToast("Pending approval choice cleared.", true);
   }
 
-  // ── Invite panel UI mode ──────────────────────────────────────────────────
-
-  function setInviteCustomerModeUI() {
-    const existingSelected = !!inviteSelectedCustomer;
-    const newName = inviteNewCustomerName.value.trim();
-    const newMode = !!newName;
-
-    if (existingSelected) {
-      inviteNewCard.classList.add("is-disabled");
-      inviteNewCustomerName.disabled = true;
-      inviteCustomerNotes.disabled   = true;
-      inviteCountryPicker.setEnabled(false);
-    } else {
-      inviteNewCard.classList.remove("is-disabled");
-      inviteNewCustomerName.disabled = false;
-      inviteCustomerNotes.disabled   = !newMode;
-      inviteCountryPicker.setEnabled(newMode);
-    }
-
-    if (newMode) {
-      inviteExistingCard.classList.add("is-disabled");
-      inviteExistingCustomerPicker.setEnabled(false);
-    } else {
-      inviteExistingCard.classList.remove("is-disabled");
-      inviteExistingCustomerPicker.setEnabled(true);
-    }
-  }
-
-  function clearInviteCustomer() {
-    inviteExistingCustomerPicker.clear();
-    inviteSelectedCustomer         = null;
-    inviteNewCustomerName.value    = "";
-    inviteCustomerNotes.value      = "";
-    inviteCountryPicker.clear();
-    setInviteCustomerModeUI();
-  }
-
-  function clearInvite() {
-    $("inviteEmail").value = "";
-    inviteRoleCheck.checked = false;
-    inviteRoleSelect.value    = "";
-    inviteRoleSelect.disabled = true;
-    inviteCustomerSection.classList.add("hidden");
-    clearInviteCustomer();
-  }
-
-  // ── Standalone customer (Customers panel) ────────────────────────────────
-
   function clearStandaloneCreate() {
     newCustomerNameStandalone.value = "";
-    customerNotesStandalone.value   = "";
+    customerNotesStandalone.value = "";
     standaloneCountryPicker.clear();
 
     existingStandaloneCustomerPicker.clear();
     selectedExistingStandaloneCustomer = null;
-    existingStandaloneOriginalNotes    = "";
+    existingStandaloneOriginalNotes = "";
     existingCustomerDetailsStandalone.classList.add("hidden");
-    existingCustomerCodeStandalone.value    = "";
-    existingCustomerNameStandalone.value    = "";
+    existingCustomerCodeStandalone.value = "";
+    existingCustomerNameStandalone.value = "";
     existingCustomerCountryStandalone.value = "";
-    existingCustomerNotesStandalone.value   = "";
+    existingCustomerNotesStandalone.value = "";
     existingCustomerNotesStandalone.disabled = true;
     btnEditExistingCustomerNotes.textContent = "Edit notes";
     btnCancelExistingCustomerNotes.classList.add("hidden");
@@ -551,15 +444,10 @@
       .select("code,name")
       .order("name", { ascending: true });
 
-    if (error) {
-      console.error("loadCountries error:", error);
-      showToast("Failed to load countries: " + error.message, false);
-      return;
-    }
+    if (error) { console.error("loadCountries error:", error); showToast("Failed to load countries: " + error.message, false); return; }
     countriesData = data || [];
     pendingCountryPicker.render("");
     standaloneCountryPicker.render("");
-    inviteCountryPicker.render("");
   }
 
   async function loadCustomers() {
@@ -568,15 +456,10 @@
       .select("id,name,code")
       .order("name", { ascending: true });
 
-    if (error) {
-      console.error("loadCustomers error:", error);
-      showToast("Failed to load customers: " + error.message, false);
-      return;
-    }
+    if (error) { console.error("loadCustomers error:", error); showToast("Failed to load customers: " + error.message, false); return; }
     customersData = data || [];
     pendingExistingCustomerPicker.render("");
     existingStandaloneCustomerPicker.render("");
-    inviteExistingCustomerPicker.render("");
   }
 
   function checkCustomerDuplicate(name) {
@@ -625,7 +508,7 @@
     pendingTbody.innerHTML = data.map((p) => {
       const created = p.created_at ? formatDate(p.created_at) : "";
       const display = makeDisplayName(p.requested_full_name);
-      const email   = p.requested_email || "";
+      const email = p.requested_email || "";
 
       return `
         <tr data-user-id="${esc(p.user_id)}" data-panel="client">
@@ -675,10 +558,10 @@
     }
 
     pendingInternalTbody.innerHTML = data.map((p) => {
-      const created     = p.created_at ? formatDate(p.created_at) : "";
-      const display     = makeDisplayName(p.requested_full_name);
-      const email       = p.requested_email || "";
-      const currentRole = p.role || "internal";
+      const created = p.created_at ? formatDate(p.created_at) : "";
+      const display = makeDisplayName(p.requested_full_name);
+      const email = p.requested_email || "";
+      const currentRole = p.role || "general";
 
       const roleOptions = INTERNAL_ROLES.map(r =>
         `<option value="${esc(r.value)}" ${r.value === currentRole ? "selected" : ""}>${esc(r.label)}</option>`
@@ -712,10 +595,10 @@
   // ── Approve / reject ─────────────────────────────────────────────────────
 
   async function createCustomerRecord({ name, countryCode, notes }) {
-    const cleanName    = String(name || "").trim().replace(/\s+/g, " ");
+    const cleanName = String(name || "").trim().replace(/\s+/g, " ");
     const cleanCountry = String(countryCode || "").trim();
 
-    if (!cleanName)    throw new Error("Customer name is required.");
+    if (!cleanName) throw new Error("Customer name is required.");
     if (!cleanCountry) throw new Error("Country is required.");
     if (checkCustomerDuplicate(cleanName)) throw new Error("A customer with this name already exists.");
 
@@ -732,12 +615,12 @@
 
   async function resolvePendingCustomerId() {
     const selectedId = pendingExistingCustomerPicker.getSelectedId();
-    const newName    = newCustomerNamePending.value.trim();
-    const notes      = customerNotesPending.value.trim();
+    const newName = newCustomerNamePending.value.trim();
+    const notes = customerNotesPending.value.trim();
     const countryCode = pendingCountryPicker.getSelectedCode();
 
     const usingExisting = !!selectedId;
-    const usingNew      = !!newName;
+    const usingNew = !!newName;
 
     if (usingExisting && usingNew) throw new Error("Choose one option only: use existing customer OR create new customer.");
     if (!usingExisting && !usingNew) throw new Error("Choose one option: select an existing customer OR create a new customer.");
@@ -752,7 +635,7 @@
     const { error } = await sb
       .from("profiles")
       .update({
-        status:      "active",
+        status: "active",
         customer_id: customerId,
         approved_at: new Date().toISOString(),
         approved_by: myUserId
@@ -767,8 +650,8 @@
     const { error } = await sb
       .from("profiles")
       .update({
-        status:      "active",
-        role:        role,
+        status: "active",
+        role: role,
         approved_at: new Date().toISOString(),
         approved_by: myUserId
       })
@@ -782,7 +665,7 @@
     const { error } = await sb
       .from("profiles")
       .update({
-        status:      "rejected",
+        status: "rejected",
         approved_at: new Date().toISOString(),
         approved_by: myUserId
       })
@@ -833,16 +716,16 @@
       const display = makeDisplayName(u.requested_full_name);
       const c = u.customer;
       const customerLabel = c ? `${c.name} (${c.code})` : (u.customer_id ? String(u.customer_id) : "");
-      const approverName  = approverNameMap[u.approved_by] || "";
+      const approverName = approverNameMap[u.approved_by] || "";
 
       return {
-        user_id:       u.user_id,
-        display_name:  display,
-        email:         u.requested_email,
-        role:          u.role,
+        user_id: u.user_id,
+        display_name: display,
+        email: u.requested_email,
+        role: u.role,
         customer_label: customerLabel,
-        created_at:    u.created_at,
-        approved_at:   u.approved_at,
+        created_at: u.created_at,
+        approved_at: u.approved_at,
         approver_name: approverName
       };
     });
@@ -908,11 +791,11 @@
   async function fillExistingStandaloneCustomerDetails(customer) {
     const full = await fetchCustomerFull(customer.id);
     selectedExistingStandaloneCustomer = full;
-    existingStandaloneOriginalNotes    = full.notes || "";
-    existingCustomerCodeStandalone.value    = full.code    || "";
-    existingCustomerNameStandalone.value    = full.name    || "";
+    existingStandaloneOriginalNotes = full.notes || "";
+    existingCustomerCodeStandalone.value = full.code || "";
+    existingCustomerNameStandalone.value = full.name || "";
     existingCustomerCountryStandalone.value = full.country || "";
-    existingCustomerNotesStandalone.value   = full.notes   || "";
+    existingCustomerNotesStandalone.value = full.notes || "";
     existingCustomerDetailsStandalone.classList.remove("hidden");
     setExistingStandaloneNotesEditMode(false);
   }
@@ -938,87 +821,6 @@
   function cancelExistingStandaloneCustomerNotesEdit() {
     existingCustomerNotesStandalone.value = existingStandaloneOriginalNotes || "";
     setExistingStandaloneNotesEditMode(false);
-  }
-
-  // ── Invite: send ─────────────────────────────────────────────────────────
-
-  async function sendInvite() {
-    const email       = ($("inviteEmail").value || "").trim();
-    const roleChecked = inviteRoleCheck.checked;
-    const role        = roleChecked ? inviteRoleSelect.value : null;
-
-    if (!email) throw new Error("Please enter an email address.");
-    if (roleChecked && !role) throw new Error("Please select a role.");
-
-    let customerId   = null;
-    let customerName = null;
-
-    if (role === "customer") {
-      const selectedId = inviteExistingCustomerPicker.getSelectedId();
-      const newName    = inviteNewCustomerName.value.trim();
-
-      if (!selectedId && !newName) {
-        throw new Error("Please select an existing customer or create a new one for this user.");
-      }
-
-      if (selectedId) {
-        // Existing customer
-        customerId   = selectedId;
-        const cust   = customersData.find(c => c.id === selectedId);
-        customerName = cust ? cust.name : "";
-      } else {
-        // Create new customer first, then invite
-        showToast("Creating customer…", true);
-        customerId   = await createCustomerRecord({
-          name:        newName,
-          countryCode: inviteCountryPicker.getSelectedCode(),
-          notes:       inviteCustomerNotes.value.trim()
-        });
-        customerName = newName;
-        await loadCustomers();
-      }
-    }
-
-    showToast("Sending invitation…", true);
-
-    const redirectTo = `${window.location.origin}/accept-invite.html`;
-
-    const { data, error } = await window.sb.functions.invoke("invite-user", {
-      body: {
-        email,
-        role:          role || undefined,
-        customer_id:   customerId   || undefined,
-        customer_name: customerName || undefined,
-        redirect_to:   redirectTo,
-      }
-    });
-
-    if (error) {
-      // FunctionsHttpError — try to get the body
-      let msg = error.message || "Unknown error";
-      try {
-        const body = await error.context?.json?.();
-        if (body?.error) msg = body.error;
-      } catch {}
-      throw new Error(msg);
-    }
-
-    if (data?.exists) {
-      showUserExistsModal(data);
-      return;
-    }
-
-    if (data?.error) {
-      throw new Error(data.error);
-    }
-
-    showToast(`Invitation sent to ${email}.`, true);
-    clearInvite();
-
-    // Refresh tables so any new pending row appears
-    await loadPending();
-    await loadPendingInternal();
-    await loadActiveUsers();
   }
 
   // ── Auth guard ───────────────────────────────────────────────────────────
@@ -1049,19 +851,11 @@
 
   if (typeof setupNavTabs === "function") setupNavTabs(myProf.role, "adminarea");
 
-  // Show Admin option in invite role select only for admins
-  if (myProf.role === "admin") {
-    const adminOpt = document.createElement("option");
-    adminOpt.value       = "admin";
-    adminOpt.textContent = "Admin";
-    // Insert as first option after the placeholder
-    inviteRoleSelect.insertBefore(adminOpt, inviteRoleSelect.options[1]);
-  }
-
   // ── Event listeners ──────────────────────────────────────────────────────
 
   on("btnRefresh", "click", async () => {
     showToast("Refreshing…", true);
+
     await loadCustomers();
     await loadCountries();
     await loadPending();
@@ -1078,68 +872,6 @@
   on("btnClearPendingChoice", "click", clearPendingChoice);
   on("btnClearStandaloneCustomer", "click", clearStandaloneCreate);
 
-  // Invite panel listeners
-  on(inviteRoleCheck, "change", () => {
-    const checked = inviteRoleCheck.checked;
-    inviteRoleSelect.disabled = !checked;
-    if (!checked) {
-      inviteRoleSelect.value = "";
-      inviteCustomerSection.classList.add("hidden");
-      clearInviteCustomer();
-    }
-  });
-
-  on(inviteRoleSelect, "change", () => {
-    const role = inviteRoleSelect.value;
-    if (role === "customer") {
-      inviteCustomerSection.classList.remove("hidden");
-    } else {
-      inviteCustomerSection.classList.add("hidden");
-      clearInviteCustomer();
-    }
-  });
-
-  on(inviteNewCustomerName, "input", () => {
-    if (inviteNewCustomerName.value.trim()) {
-      inviteExistingCustomerPicker.clear();
-      inviteSelectedCustomer = null;
-    } else {
-      inviteCustomerNotes.value = "";
-      inviteCountryPicker.clear();
-    }
-    setInviteCustomerModeUI();
-  });
-
-  on(inviteNewCustomerName, "blur", () => {
-    const name = inviteNewCustomerName.value.trim();
-    if (name.length >= 3 && checkCustomerDuplicate(name)) {
-      showToast("Warning: a customer with this name already exists.", false);
-    }
-  });
-
-  on("btnClearInviteCustomer", "click", () => {
-    clearInviteCustomer();
-    showToast("Customer choice cleared.", true);
-  });
-
-  on("btnClearInvite", "click", () => {
-    clearInvite();
-    showToast("Invite form cleared.", true);
-  });
-
-  on("btnSendInvite", "click", async () => {
-    const btn = $("btnSendInvite");
-    btn.disabled = true;
-    try {
-      await sendInvite();
-    } catch (err) {
-      console.error(err);
-      showToast(String(err?.message || err), false);
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
   on(newCustomerNamePending, "input", () => {
     if (newCustomerNamePending.value.trim()) {
       pendingExistingCustomerPicker.clear();
@@ -1154,9 +886,9 @@
     try {
       showToast("Creating customer…", true);
       await createCustomerRecord({
-        name:        newCustomerNameStandalone.value.trim(),
+        name: newCustomerNameStandalone.value.trim(),
         countryCode: standaloneCountryPicker.getSelectedCode(),
-        notes:       customerNotesStandalone.value.trim()
+        notes: customerNotesStandalone.value.trim()
       });
       await loadCustomers();
       await loadActiveUsers();
@@ -1211,7 +943,7 @@
     if (checkCustomerDuplicate(name)) showToast("Warning: a customer with this name already exists.", false);
   });
 
-  // Click handler for pending client users table (delegated)
+  // Click handler for BOTH pending tables (delegated)
   on(pendingTbody, "click", async (e) => {
     const btn = e.target.closest("button[data-action]");
     if (!btn) return;
@@ -1227,15 +959,15 @@
       if (action === "approve") {
         await approveClientUser(userId);
         showToast("Approved.", true);
-        await loadCustomers();
-        await loadActiveUsers();
-        clearPendingChoice();
       } else if (action === "reject") {
         await rejectUser(userId);
         showToast("Rejected.", true);
       }
 
+      await loadCustomers();
       await loadPending();
+      await loadActiveUsers();
+      clearPendingChoice();
     } catch (err) {
       console.error(err);
       showToast(String(err?.message || err), false);
@@ -1256,7 +988,7 @@
 
       if (action === "approve") {
         const roleSelect = tr.querySelector(`.roleSelectInline[data-user-id="${userId}"]`);
-        const role = roleSelect ? roleSelect.value : "internal";
+        const role = roleSelect ? roleSelect.value : "general";
         await approveInternalUser(userId, role);
         showToast("Approved.", true);
       } else if (action === "reject") {
@@ -1292,7 +1024,6 @@
 
   pendingCountryPicker.setEnabled(false);
   customerNotesPending.disabled = true;
-  inviteCountryPicker.setEnabled(false);
 
   await loadCustomers();
   await loadCountries();
@@ -1300,6 +1031,5 @@
   await loadPendingInternal();
   await loadActiveUsers();
   setPendingModeUI();
-  setInviteCustomerModeUI();
   updateSortIndicator();
 })();

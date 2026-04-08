@@ -50,22 +50,6 @@
       margin: 0 0 24px 0;
     }
 
-    /* ── Role attribution note ── */
-    .role-note {
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 20px;
-      font-size: 13px;
-      color: #1e40af;
-      line-height: 1.5;
-    }
-
-    .role-note strong {
-      font-weight: 700;
-    }
-
     /* ── Tabs ── */
     .tabs {
       display: flex;
@@ -260,46 +244,32 @@
       <label for="emailDisplay">Email</label>
       <input id="emailDisplay" type="email" readonly placeholder="Loading…" />
 
-      <!-- ── PRE-ASSIGNED ROLE NOTE (shown when admin pre-set the role) ──── -->
-      <div id="preAssignedRoleNote" class="role-note" style="display:none;">
-        <span id="preAssignedRoleText"></span>
+      <!-- Account type tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" id="tabClient" type="button">Client User Account</button>
+        <button class="tab-btn" id="tabInternal" type="button">Internal User Account</button>
       </div>
 
-      <!-- ── PRE-ASSIGNED FORM (simplified — just full name) ────────────── -->
-      <div id="panelPreAssigned" style="display:none;">
-        <label for="preAssignedFullName">Full Name</label>
-        <input id="preAssignedFullName" type="text" autocomplete="off" placeholder="Your full name" />
+      <!-- Client panel -->
+      <div class="tab-panel active" id="panelClient">
+        <label for="clientFullName">Full Name</label>
+        <input id="clientFullName" type="text" autocomplete="off" placeholder="Your full name" />
+
+        <label for="companyName">Company</label>
+        <input id="companyName" type="text" autocomplete="off" placeholder="Your company name" />
       </div>
 
-      <!-- ── STANDARD TABS (hidden when role is pre-assigned) ─────────────── -->
-      <div id="tabsContainer">
-        <!-- Account type tabs -->
-        <div class="tabs">
-          <button class="tab-btn active" id="tabClient" type="button">Client User Account</button>
-          <button class="tab-btn" id="tabInternal" type="button">Internal User Account</button>
-        </div>
+      <!-- Internal panel -->
+      <div class="tab-panel" id="panelInternal">
+        <label for="internalFullName">Full Name</label>
+        <input id="internalFullName" type="text" autocomplete="off" placeholder="Your full name" />
 
-        <!-- Client panel -->
-        <div class="tab-panel active" id="panelClient">
-          <label for="clientFullName">Full Name</label>
-          <input id="clientFullName" type="text" autocomplete="off" placeholder="Your full name" />
-
-          <label for="companyName">Company</label>
-          <input id="companyName" type="text" autocomplete="off" placeholder="Your company name" />
-        </div>
-
-        <!-- Internal panel -->
-        <div class="tab-panel" id="panelInternal">
-          <label for="internalFullName">Full Name</label>
-          <input id="internalFullName" type="text" autocomplete="off" placeholder="Your full name" />
-
-          <label for="internalRole">Role</label>
-          <select id="internalRole">
-            <option value="internal" selected>General</option>
-            <option value="client_manager">Client Manager</option>
-            <option value="catalog_manager">Catalog Manager</option>
-          </select>
-        </div>
+        <label for="internalRole">Role</label>
+        <select id="internalRole">
+          <option value="internal" selected>General</option>
+          <option value="client_manager">Client Manager</option>
+          <option value="catalog_manager">Catalog Manager</option>
+        </select>
       </div>
 
       <!-- Password -->
@@ -315,11 +285,11 @@
       <button class="btn" id="btnCreate" type="button">Create Account</button>
     </div>
 
-    <!-- Success screen — pending approval -->
+    <!-- Success screen -->
     <div id="successScreen">
       <div class="icon">✅</div>
       <h2 style="margin-bottom:8px;">Account created!</h2>
-      <p id="successMessage">Your account is pending approval. You will be notified once it is activated.</p>
+      <p>Your account is pending approval. You will be notified once it is activated.</p>
       <a href="login.html" style="display:block;font:700 14px 'Rubik',sans-serif;color:#003764;text-decoration:none;margin-top:4px;">
         Go to Login →
       </a>
@@ -346,19 +316,6 @@
     let activeTab  = "client"; // "client" | "internal"
     let userEmail  = "";
 
-    // Whether the admin pre-assigned a role via invite
-    let preAssignedRole       = null; // e.g. "client_manager"
-    let preAssignedCustomerId = null; // uuid string or null
-    let preAssignedCustomerName = null; // display name or null
-
-    const ROLE_LABELS = {
-      admin:           'Administrator',
-      client_manager:  'Client Manager',
-      catalog_manager: 'Catalog Manager',
-      internal:        'Internal User',
-      customer:        'Customer',
-    };
-
     // ── Toast ────────────────────────────────────────────────
     function showToast(text, ok = true) {
       const t = $("toast");
@@ -376,6 +333,7 @@
       $("panelClient").classList.toggle("active",   tab === "client");
       $("panelInternal").classList.toggle("active", tab === "internal");
 
+      // Focus first name field
       setTimeout(() => {
         (tab === "client" ? $("clientFullName") : $("internalFullName")).focus();
       }, 50);
@@ -385,6 +343,8 @@
     $("tabInternal").addEventListener("click", () => setTab("internal"));
 
     // ── Parse token from URL ─────────────────────────────────
+    // Supabase invite links use hash fragment: #access_token=...&type=invite
+    // or query params depending on config. We handle both.
     function parseSupabaseParams() {
       const hash   = window.location.hash.slice(1);
       const search = window.location.search.slice(1);
@@ -392,34 +352,11 @@
       return {
         accessToken:  params.get("access_token"),
         refreshToken: params.get("refresh_token"),
-        type:         params.get("type"),
-        tokenHash:    params.get("token_hash"),
-        token:        params.get("token"),
+        type:         params.get("type"),          // "invite"
+        tokenHash:    params.get("token_hash"),    // PKCE flow
+        token:        params.get("token"),         // older OTP flow
         email:        params.get("email"),
       };
-    }
-
-    // ── Apply pre-assigned role UI ───────────────────────────
-    function applyPreAssignedUI() {
-      if (!preAssignedRole) return;
-
-      // Hide tabs, show simplified form
-      $("tabsContainer").style.display = "none";
-      $("panelPreAssigned").style.display = "block";
-
-      // Build the attribution note
-      const roleLabel = ROLE_LABELS[preAssignedRole] || preAssignedRole;
-      let noteText = `Your role has been set to <strong>${roleLabel}</strong>`;
-      if (preAssignedRole === 'customer' && preAssignedCustomerName) {
-        noteText += `, as a user from <strong>${preAssignedCustomerName}</strong>`;
-      }
-      noteText += '.';
-
-      $("preAssignedRoleText").innerHTML = noteText;
-      $("preAssignedRoleNote").style.display = "block";
-
-      // Focus on the full name field
-      setTimeout(() => $("preAssignedFullName").focus(), 50);
     }
 
     // ── Init: validate token & prefill email ─────────────────
@@ -431,6 +368,8 @@
 
       const p = parseSupabaseParams();
 
+      // If Supabase already set the session via the URL (PKCE / implicit),
+      // getSession() will pick it up. Otherwise we exchange the token manually.
       let session = null;
 
       try {
@@ -462,7 +401,7 @@
           if (!error) session = data.session;
         }
 
-        // Case 4: Supabase handled it automatically
+        // Case 4: Supabase handled it automatically (check current session)
         if (!session) {
           const { data } = await sb.auth.getSession();
           if (data?.session?.user) session = data.session;
@@ -473,7 +412,7 @@
       }
 
       if (!session?.user) {
-        $("mainForm").style.display   = "none";
+        $("mainForm").style.display  = "none";
         $("errorScreen").style.display = "block";
         return;
       }
@@ -481,16 +420,6 @@
       // Prefill email (readonly)
       userEmail = session.user.email || p.email || "";
       $("emailDisplay").value = userEmail;
-
-      // ── Check for pre-assigned role in invite metadata ────
-      const meta = session.user.user_metadata || {};
-      const validRoles = ['admin','client_manager','catalog_manager','internal','customer'];
-      if (meta.role && validRoles.includes(meta.role)) {
-        preAssignedRole       = meta.role;
-        preAssignedCustomerId = meta.customer_id || null;
-        preAssignedCustomerName = meta.requested_customer_name || null;
-        applyPreAssignedUI();
-      }
     }
 
     init();
@@ -502,6 +431,21 @@
       const password        = $("password").value;
       const confirmPassword = $("confirmPassword").value;
 
+      // Collect fields based on active tab
+      const isClient   = activeTab === "client";
+      const fullName   = isClient
+        ? $("clientFullName").value.trim()
+        : $("internalFullName").value.trim();
+      const company    = isClient ? $("companyName").value.trim() : null;
+      const role       = isClient ? "customer" : $("internalRole").value;
+
+      // Validation
+      if (!fullName) {
+        showToast("Please enter your full name.", false); return;
+      }
+      if (isClient && !company) {
+        showToast("Please enter your company name.", false); return;
+      }
       if (!password) {
         showToast("Please choose a password.", false); return;
       }
@@ -517,7 +461,7 @@
       btn.textContent = "Please wait…";
 
       try {
-        // ── Step 1: Set the password ──────────────────────────
+        // Step 1: Set the password
         const { error: pwErr } = await sb.auth.updateUser({ password });
         if (pwErr) {
           showToast("Error setting password: " + pwErr.message, false);
@@ -526,69 +470,13 @@
           return;
         }
 
-        // ── Step 2: Get user ID from current session ──────────
+        // Step 2: Update the profile row created by the trigger
+        // The trigger already inserted a row with user_id when the invite was sent.
         const { data: sessionData } = await sb.auth.getSession();
         const userId = sessionData?.session?.user?.id;
 
         if (!userId) {
           showToast("Session error. Please try opening the link again.", false);
-          btn.disabled    = false;
-          btn.textContent = "Create Account";
-          return;
-        }
-
-        // ── PATH A: Role was pre-assigned by admin ────────────
-        if (preAssignedRole) {
-          const fullName = ($("preAssignedFullName").value || "").trim();
-          if (!fullName) {
-            showToast("Please enter your full name.", false);
-            btn.disabled    = false;
-            btn.textContent = "Create Account";
-            return;
-          }
-
-          // activate_invited_profile is a SECURITY DEFINER postgres function
-          // that reads customer_id from raw_user_meta_data and sets
-          // status='active' + customer_id in one UPDATE, bypassing the
-          // _profiles_enforce_pending trigger's guard.
-          const { error: activateErr } = await sb.rpc('activate_invited_profile', {
-            p_full_name: fullName,
-          });
-
-          if (activateErr) {
-            showToast("Error activating account: " + activateErr.message, false);
-            btn.disabled    = false;
-            btn.textContent = "Create Account";
-            return;
-          }
-
-          // Also sync auth user metadata
-          await sb.auth.updateUser({ data: { full_name: fullName } });
-
-          // Show active success screen
-          $("successMessage").textContent =
-            "Your account is now active. You can sign in straight away.";
-          $("mainForm").style.display    = "none";
-          $("successScreen").style.display = "block";
-          return;
-        }
-
-        // ── PATH B: No pre-assignment — standard pending flow ──
-        const isClient = activeTab === "client";
-        const fullName = isClient
-          ? $("clientFullName").value.trim()
-          : $("internalFullName").value.trim();
-        const company  = isClient ? $("companyName").value.trim() : null;
-        const role     = isClient ? "customer" : $("internalRole").value;
-
-        if (!fullName) {
-          showToast("Please enter your full name.", false);
-          btn.disabled    = false;
-          btn.textContent = "Create Account";
-          return;
-        }
-        if (isClient && !company) {
-          showToast("Please enter your company name.", false);
           btn.disabled    = false;
           btn.textContent = "Create Account";
           return;
@@ -612,7 +500,7 @@
           return;
         }
 
-        // Sync auth user metadata
+        // Step 3: Also update auth user metadata to keep things in sync
         await sb.auth.updateUser({
           data: {
             full_name: fullName,
@@ -621,9 +509,7 @@
           }
         });
 
-        // Show pending success screen
-        $("successMessage").textContent =
-          "Your account is pending approval. You will be notified once it is activated.";
+        // Show success
         $("mainForm").style.display    = "none";
         $("successScreen").style.display = "block";
 

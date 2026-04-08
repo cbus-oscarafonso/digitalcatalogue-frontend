@@ -152,20 +152,6 @@
       font: 500 14px "Rubik", system-ui, sans-serif;
     }
 
-    /* Prevent checkbox from inheriting full-width input styles */
-    input[type="checkbox"] {
-      width: auto;
-      padding: 0;
-      border: none;
-      border-radius: 0;
-      box-shadow: none;
-      margin: 0;
-      cursor: pointer;
-      accent-color: var(--blue, #003764);
-      width: 16px;
-      height: 16px;
-    }
-
     input:focus,
     textarea:focus,
     select:focus {
@@ -210,13 +196,6 @@
       background: #b91c1c;
       border-color: #b91c1c;
       color: #fff;
-    }
-
-    .btn:disabled {
-      opacity: .55;
-      cursor: not-allowed;
-      filter: none;
-      transform: none;
     }
 
     .actions {
@@ -417,80 +396,6 @@
       box-shadow: 0 0 0 3px rgba(0, 55, 100, .12);
     }
 
-    /* ── Invite panel: role checkbox row ── */
-    .inviteRoleRow {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 11px 0 0 0;
-    }
-
-    .inviteRoleRow label {
-      margin: 0;
-      font-size: 14px;
-      color: #111827;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    select:disabled {
-      background: #f3f4f6;
-      color: #9ca3af;
-      cursor: not-allowed;
-      opacity: 1;
-    }
-
-    /* ── User-exists modal ── */
-    .modalOverlay {
-      position: fixed;
-      inset: 0;
-      z-index: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modalOverlay[hidden] { display: none !important; }
-
-    .modalBackdrop {
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,.45);
-    }
-
-    .modalPanel {
-      position: relative;
-      background: var(--card, #fff);
-      border-radius: 18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.22);
-      max-width: 440px;
-      width: calc(100vw - 32px);
-      z-index: 1;
-    }
-
-    .modalPanel--sm { max-width: 380px; }
-
-    .modalTop {
-      padding: 14px 18px;
-      border-radius: 18px 18px 0 0;
-    }
-
-    .panelTitle {
-      font-weight: 700;
-      font-size: 14px;
-    }
-
-    .modalBody {
-      padding: 18px;
-    }
-
-    .modalFooter {
-      padding: 0 18px 18px;
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-
     @media (max-width: 1100px) {
       .customerAdminGrid {
         grid-template-columns: 1fr;
@@ -532,108 +437,7 @@
 
   <main class="layoutAdmin">
 
-    <!-- ── INVITE NEW USER ─────────────────────────────────── -->
-    <section class="adminPanel" id="invitePanel">
-      <div class="adminPanelTop">
-        <div class="panelTitleAdmin">Invite new user</div>
-      </div>
-
-      <div class="adminPanelBody">
-
-        <!-- Row: email + role checkbox + role selector -->
-        <div class="row">
-          <div class="field">
-            <label for="inviteEmail">User email</label>
-            <input id="inviteEmail" type="email" placeholder="user@example.com" autocomplete="off" />
-          </div>
-
-          <div class="field" style="min-width:auto;flex:0 0 auto;align-self:flex-end;">
-            <div class="inviteRoleRow">
-              <input type="checkbox" id="inviteRoleCheck" />
-              <label for="inviteRoleCheck">Assign a role?</label>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="inviteRoleSelect">Role</label>
-            <select id="inviteRoleSelect" disabled>
-              <option value="">— select role —</option>
-              <!-- Admin option: inserted by JS only for admins -->
-              <option value="client_manager">Client Manager</option>
-              <option value="catalog_manager">Catalog Manager</option>
-              <option value="internal">Internal</option>
-              <option value="customer">Customer</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Customer assignment (shown only when role = customer) -->
-        <div id="inviteCustomerSection" class="hidden" style="margin-top:16px;">
-          <div style="font-size:13px;font-weight:700;color:var(--blue,#003764);margin-bottom:12px;">
-            Assign a customer to this user:
-          </div>
-
-          <div class="choiceGrid">
-            <!-- Use existing -->
-            <div id="inviteExistingChoiceCard" class="choiceCard">
-              <div class="choiceTitle">Use existing customer</div>
-              <div class="field">
-                <label>Search customer</label>
-                <div class="customerSuggestWrap">
-                  <input id="inviteCustomersSelect" class="pickerInput" type="text"
-                    placeholder="Search customer…" autocomplete="off" />
-                  <span class="pickerCaret">▼</span>
-                  <div id="inviteCustomerDropdown" class="pickerDropdown"></div>
-                </div>
-                <div class="small" style="margin-top:6px;">Search and select an existing customer.</div>
-              </div>
-            </div>
-
-            <div class="orSep">OR</div>
-
-            <!-- Create new -->
-            <div id="inviteNewChoiceCard" class="choiceCard">
-              <div class="choiceTitle">Create new customer</div>
-              <div class="row">
-                <div class="field">
-                  <label>New customer name</label>
-                  <input id="inviteNewCustomerName" type="text" placeholder="Customer name…" autocomplete="off" />
-                </div>
-
-                <div class="field">
-                  <label>Country <span class="small">(required)</span></label>
-                  <div class="pickerWrap">
-                    <input id="inviteCountrySearch" class="pickerInput" type="text"
-                      placeholder="Select country…" autocomplete="off" disabled />
-                    <span class="pickerCaret">▼</span>
-                    <div id="inviteCountryDropdown" class="pickerDropdown"></div>
-                  </div>
-                  <div class="small" style="margin-top:6px;">Type to search by code or country name.</div>
-                </div>
-
-                <div class="field field-wide">
-                  <label>Notes <span class="small">(optional)</span></label>
-                  <textarea id="inviteCustomerNotes" placeholder="Internal notes…" disabled></textarea>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="actions">
-            <button class="btn" id="btnClearInviteCustomer" type="button">Clear customer choice</button>
-          </div>
-        </div>
-
-        <!-- Bottom actions -->
-        <div class="actions" style="margin-top:16px;">
-          <button class="btn primary" id="btnSendInvite" type="button">Send invitation</button>
-          <button class="btn" id="btnClearInvite" type="button">Clear</button>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- ── PENDING CLIENT USERS ────────────────────────────── -->
+    <!-- ── PENDING CLIENT USERS ────────────────────────── -->
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Pending client users</div>
@@ -714,7 +518,7 @@
       </div>
     </section>
 
-    <!-- ── PENDING INTERNAL USERS ──────────────────────────── -->
+    <!-- ── PENDING INTERNAL USERS ──────────────────────── -->
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Pending internal users</div>
@@ -741,7 +545,7 @@
       </div>
     </section>
 
-    <!-- ── ACTIVE USERS ────────────────────────────────────── -->
+    <!-- ── ACTIVE USERS ────────────────────────────────── -->
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Active Users</div>
@@ -784,7 +588,7 @@
       </div>
     </section>
 
-    <!-- ── CUSTOMERS ───────────────────────────────────────── -->
+    <!-- ── CUSTOMERS ───────────────────────────────────── -->
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Customers</div>
@@ -951,22 +755,6 @@
       </div>
       <div class="modalFooter">
         <button class="btn" id="btnCatalogPickerClose" type="button">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── User already exists modal ─────────────────────────── -->
-  <div id="userExistsModal" class="modalOverlay" hidden>
-    <div class="modalBackdrop" id="userExistsBackdrop"></div>
-    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
-      <div class="modalTop" style="background:#b91c1c;border-radius:18px 18px 0 0;padding:14px 18px;">
-        <div class="panelTitle" style="color:#fff;">User already exists</div>
-      </div>
-      <div class="modalBody">
-        <p id="userExistsMessage" style="margin:0;font-size:14px;line-height:1.65;color:#111827;"></p>
-      </div>
-      <div class="modalFooter">
-        <button class="btn primary" id="btnUserExistsDismiss" type="button">OK</button>
       </div>
     </div>
   </div>
