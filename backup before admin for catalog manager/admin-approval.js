@@ -1037,7 +1037,7 @@
     .eq("user_id", myUserId)
     .maybeSingle();
 
-  if (myProfErr || !myProf || !["admin", "client_manager", "catalog_manager"].includes(myProf.role) || String(myProf.status) !== "active") {
+  if (myProfErr || !myProf || !["admin", "client_manager"].includes(myProf.role) || String(myProf.status) !== "active") {
     try { sessionStorage.setItem("authError", "blocked"); } catch { }
     await sb.auth.signOut().catch(() => { });
     window.location.replace("login.html");
@@ -1049,19 +1049,12 @@
 
   if (typeof setupNavTabs === "function") setupNavTabs(myProf.role, "adminarea");
 
-  if (myProf.role === "catalog_manager") {
-    document.querySelectorAll(".adminPanel[data-panel-pending], .adminPanel[data-panel-active]")
-      .forEach(el => el.style.display = "none");
-    Array.from(inviteRoleSelect.options).forEach(opt => {
-      if (opt.value && !["catalog_manager", "internal"].includes(opt.value)) opt.remove();
-    });
-  }
-
   // Show Admin option in invite role select only for admins
   if (myProf.role === "admin") {
     const adminOpt = document.createElement("option");
     adminOpt.value       = "admin";
     adminOpt.textContent = "Admin";
+    // Insert as first option after the placeholder
     inviteRoleSelect.insertBefore(adminOpt, inviteRoleSelect.options[1]);
   }
 
@@ -1295,40 +1288,6 @@
     sortAndRenderActive();
   });
 
-
-  // ── Vehicles ─────────────────────────────────────────────────────────────
-
-  async function loadVehicles() {
-    const tbody = $("vehiclesTbody");
-    if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="7">Loading…</td></tr>`;
-
-    const { data, error } = await sb
-      .from("vehicles")
-      .select("pep_code, model, production_year, vin, cobus_bus_no, motor_no, customer:customers!vehicles_customer_id_fkey(name)")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      tbody.innerHTML = `<tr><td colspan="7">Error: ${esc(error.message)}</td></tr>`;
-      return;
-    }
-    if (!data || !data.length) {
-      tbody.innerHTML = `<tr><td colspan="7">No vehicles.</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = data.map(v => `
-      <tr>
-        <td class="mono">${esc(v.pep_code || "")}</td>
-        <td>${esc(v.model || "")}</td>
-        <td>${esc(v.production_year || "")}</td>
-        <td class="mono small">${esc(v.vin || "")}</td>
-        <td>${esc(v.cobus_bus_no || "")}</td>
-        <td>${esc(v.motor_no || "")}</td>
-        <td>${esc(v.customer?.name || "")}</td>
-      </tr>
-    `).join("");
-  }
-
   // ── Init ─────────────────────────────────────────────────────────────────
 
   pendingCountryPicker.setEnabled(false);
@@ -1340,7 +1299,6 @@
   await loadPending();
   await loadPendingInternal();
   await loadActiveUsers();
-  await loadVehicles();
   setPendingModeUI();
   setInviteCustomerModeUI();
   updateSortIndicator();
