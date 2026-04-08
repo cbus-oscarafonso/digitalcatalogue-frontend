@@ -1062,7 +1062,6 @@
     const adminOpt = document.createElement("option");
     adminOpt.value       = "admin";
     adminOpt.textContent = "Admin";
-    // Insert as first option after the placeholder
     inviteRoleSelect.insertBefore(adminOpt, inviteRoleSelect.options[1]);
   }
 
@@ -1297,197 +1296,38 @@
   });
 
 
-  // ── Vehicles (existing) ───────────────────────────────────────────────────
+  // ── Vehicles ─────────────────────────────────────────────────────────────
 
   async function loadVehicles() {
     const tbody = $("vehiclesTbody");
     if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="7">Loading…</td></tr>`;
+
     const { data, error } = await sb
       .from("vehicles")
-      .select("pep_code,model,production_year,vin,cobus_bus_no,motor_no,customer:customers!vehicles_customer_id_fkey(name)")
+      .select("pep_code, model, production_year, vin, cobus_bus_no, motor_no, customer:customers!vehicles_customer_id_fkey(name)")
       .order("created_at", { ascending: false });
-    if (error) { tbody.innerHTML = `<tr><td colspan="7">Error: ${esc(error.message)}</td></tr>`; return; }
-    if (!data?.length) { tbody.innerHTML = `<tr><td colspan="7">No vehicles.</td></tr>`; return; }
-    tbody.innerHTML = data.map(v => `<tr>
-      <td class="mono">${esc(v.pep_code||"")}</td>
-      <td>${esc(v.model||"")}</td>
-      <td>${esc(v.production_year||"")}</td>
-      <td class="mono small">${esc(v.vin||"")}</td>
-      <td>${esc(v.cobus_bus_no||"")}</td>
-      <td>${esc(v.motor_no||"")}</td>
-      <td>${esc(v.customer?.name||"")}</td>
-    </tr>`).join("");
-  }
 
-  // ── Vehicles input table ──────────────────────────────────────────────────
-
-  const VEHICLE_FIELDS = ["pep_code","model","production_year","vin","cobus_bus_no","motor_no"];
-
-  function customerSelectHtml(selectedId = "") {
-    const opts = customersData.map(c =>
-      `<option value="${esc(c.id)}" ${c.id === selectedId ? "selected" : ""}>${esc(c.name)}</option>`
-    ).join("");
-    return `<select class="vc-customer" style="width:100%;min-width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:500 13px 'Rubik',sans-serif;">
-      <option value="">— none —</option>${opts}
-    </select>`;
-  }
-
-  function addVehicleInputRow(data = {}) {
-    const tbody = $("vehiclesInputTbody");
-    const tr = document.createElement("tr");
-    tr.innerHTML = VEHICLE_FIELDS.map(f => `
-      <td><input type="${f==="production_year"?"number":"text"}" class="vc-${f}"
-        value="${esc(String(data[f]||""))}"
-        placeholder="${f.replace(/_/g," ")}"
-        style="width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:500 13px 'Rubik',sans-serif;" /></td>
-    `).join("") +
-    `<td>${customerSelectHtml(data.customer_id||"")}</td>
-    <td><button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="this.closest('tr').remove()">✕</button></td>`;
-    tbody.appendChild(tr);
-  }
-
-  function clearVehicleInputTable() {
-    $("vehiclesInputTbody").innerHTML = "";
-    addVehicleInputRow();
-  }
-
-  function getVehicleInputRows() {
-    return Array.from($("vehiclesInputTbody").querySelectorAll("tr")).map(tr => ({
-      pep_code:        tr.querySelector(".vc-pep_code")?.value.trim() || null,
-      model:           tr.querySelector(".vc-model")?.value.trim() || null,
-      production_year: tr.querySelector(".vc-production_year")?.value ? Number(tr.querySelector(".vc-production_year").value) : null,
-      vin:             tr.querySelector(".vc-vin")?.value.trim() || null,
-      cobus_bus_no:    tr.querySelector(".vc-cobus_bus_no")?.value.trim() || null,
-      motor_no:        tr.querySelector(".vc-motor_no")?.value.trim() || null,
-      customer_id:     tr.querySelector(".vc-customer")?.value || null,
-    }));
-  }
-
-  // ── CSV loader ────────────────────────────────────────────────────────────
-
-  function parseCsv(text) {
-    const lines = text.trim().split(/\r?\n/);
-    if (lines.length < 2) return [];
-    // Skip Excel sep= directive line if present
-    const dataLines = lines[0].startsWith("sep=") ? lines.slice(1) : lines;
-    if (dataLines.length < 2) return [];
-    const headers = dataLines[0].split(";").map(h => h.trim().toLowerCase().replace(/\s+/g,"_"));
-    return dataLines.slice(1).map(line => {
-      const vals = line.split(";").map(v => v.trim().replace(/^"|"$/g,""));
-      const obj = {};
-      headers.forEach((h, i) => obj[h] = vals[i] || "");
-      return obj;
-    });
-  }
-
-  on("btnLoadVehiclesCsv", "click", () => $("vehiclesCsvInput").click());
-
-  $("vehiclesCsvInput")?.addEventListener("change", async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    const rows = parseCsv(text);
-    if (!rows.length) { showToast("No data found in CSV.", false); return; }
-
-    $("vehiclesInputTbody").innerHTML = "";
-    rows.forEach(r => addVehicleInputRow(r));
-
-    // Check for rows without customer_id
-    const missing = rows.filter(r => !r.customer_id || !customersData.find(c => c.id === r.customer_id));
-    if (missing.length) openVehicleCustomerModal(missing.length);
-
-    e.target.value = "";
-  });
-
-  // ── Customer assignment modal ─────────────────────────────────────────────
-
-  function openVehicleCustomerModal(missingCount) {
-    const tbody = $("vehicleCustomerModalTbody");
-    const assignAllSel = $("vehicleCustomerAssignAll");
-
-    // Populate assign-all dropdown
-    assignAllSel.innerHTML = `<option value="">— select customer —</option>` +
-      customersData.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
-
-    // Build rows for vehicles missing customer
-    const inputRows = Array.from($("vehiclesInputTbody").querySelectorAll("tr"));
-    const missingRows = inputRows.filter(tr => !tr.querySelector(".vc-customer")?.value);
-
-    tbody.innerHTML = missingRows.map((tr, idx) => {
-      const pep = tr.querySelector(".vc-pep_code")?.value || "";
-      const vin = tr.querySelector(".vc-vin")?.value || "";
-      const customerOpts = customersData.map(c =>
-        `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
-      return `<tr data-row-idx="${idx}">
-        <td style="padding:8px;font-size:13px;">${esc(pep)||esc(vin)||"(no id)"}</td>
-        <td style="padding:8px;">
-          <select class="modal-vc-customer" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:500 13px 'Rubik',sans-serif;">
-            <option value="">— none —</option>${customerOpts}
-          </select>
-        </td>
-      </tr>`;
-    }).join("");
-
-    // Store reference to actual input rows for confirm
-    $("vehicleCustomerModal")._missingRows = missingRows;
-    $("vehicleCustomerModal").hidden = false;
-  }
-
-  on("btnAssignAllCustomer", "click", () => {
-    const val = $("vehicleCustomerAssignAll").value;
-    if (!val) return;
-    $("vehicleCustomerModalTbody").querySelectorAll(".modal-vc-customer")
-      .forEach(sel => sel.value = val);
-  });
-
-  on("btnVehicleCustomerConfirm", "click", () => {
-    const modal = $("vehicleCustomerModal");
-    const missingRows = modal._missingRows || [];
-    const modalSelects = $("vehicleCustomerModalTbody").querySelectorAll(".modal-vc-customer");
-    missingRows.forEach((tr, idx) => {
-      const sel = tr.querySelector(".vc-customer");
-      if (sel && modalSelects[idx]) sel.value = modalSelects[idx].value;
-    });
-    modal.hidden = true;
-  });
-
-  on("btnVehicleCustomerCancel", "click", () => { $("vehicleCustomerModal").hidden = true; });
-  on("vehicleCustomerBackdrop", "click", () => { $("vehicleCustomerModal").hidden = true; });
-
-  // ── Confirm & insert ──────────────────────────────────────────────────────
-
-  on("btnAddVehiclesToDb", "click", () => {
-    const rows = getVehicleInputRows();
-    const valid = rows.filter(r => r.pep_code || r.vin || r.model);
-    if (!valid.length) { showToast("No vehicles to add.", false); return; }
-    $("vehicleConfirmMessage").textContent = `Add ${valid.length} new vehicle${valid.length > 1 ? "s" : ""} to the database?`;
-    $("vehicleConfirmModal").hidden = false;
-  });
-
-  on("btnVehicleConfirmCancel", "click", () => { $("vehicleConfirmModal").hidden = true; });
-  on("vehicleConfirmBackdrop",  "click", () => { $("vehicleConfirmModal").hidden = true; });
-
-  on("btnVehicleConfirmYes", "click", async () => {
-    $("vehicleConfirmModal").hidden = true;
-    const rows = getVehicleInputRows().filter(r => r.pep_code || r.vin || r.model);
-    const btn = $("btnAddVehiclesToDb");
-    btn.disabled = true;
-    try {
-      const { error } = await sb.from("vehicles").insert(rows);
-      if (error) throw new Error(error.message);
-      showToast(`${rows.length} vehicle${rows.length > 1 ? "s" : ""} added.`, true);
-      clearVehicleInputTable();
-      await loadVehicles();
-    } catch (err) {
-      showToast(String(err?.message || err), false);
-    } finally {
-      btn.disabled = false;
+    if (error) {
+      tbody.innerHTML = `<tr><td colspan="7">Error: ${esc(error.message)}</td></tr>`;
+      return;
     }
-  });
-
-  on("btnAddVehicleRow",  "click", () => addVehicleInputRow());
-  on("btnClearVehicles",  "click", () => { clearVehicleInputTable(); showToast("Cleared.", true); });
+    if (!data || !data.length) {
+      tbody.innerHTML = `<tr><td colspan="7">No vehicles.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = data.map(v => `
+      <tr>
+        <td class="mono">${esc(v.pep_code || "")}</td>
+        <td>${esc(v.model || "")}</td>
+        <td>${esc(v.production_year || "")}</td>
+        <td class="mono small">${esc(v.vin || "")}</td>
+        <td>${esc(v.cobus_bus_no || "")}</td>
+        <td>${esc(v.motor_no || "")}</td>
+        <td>${esc(v.customer?.name || "")}</td>
+      </tr>
+    `).join("");
+  }
 
   // ── Init ─────────────────────────────────────────────────────────────────
 
@@ -1501,7 +1341,6 @@
   await loadPendingInternal();
   await loadActiveUsers();
   await loadVehicles();
-  clearVehicleInputTable();
   setPendingModeUI();
   setInviteCustomerModeUI();
   updateSortIndicator();
