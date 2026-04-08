@@ -981,7 +981,7 @@
 
     showToast("Sending invitation…", true);
 
-    const redirectTo = `${window.location.origin}/accept-invite.html`;
+    const redirectTo = `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/accept-invite.html`;
 
     const { data, error } = await window.sb.functions.invoke("invite-user", {
       body: {
