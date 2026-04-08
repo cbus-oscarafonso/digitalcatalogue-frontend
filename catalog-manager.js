@@ -713,7 +713,7 @@ function renderChangeLog(entries) {
       <span class="clTs">${fmtDt(e.ts)}</span>
       <span class="clUser">${esc(e.user_name || e.user_id?.slice(0, 8) || '?')}</span>
       ${e.fields?.length ? `<span class="clFields" style="grid-column:2">Changed: <strong>${esc(e.fields.join(', '))}</strong></span>` : ''}
-      ${e.note ? `<span class="clNote" style="grid-column:2">${esc(e.note)}</span>` : ''}
+      ${e.note ? `<span class="clNote" style="grid-column:2;white-space:pre-wrap">${esc(e.note)}</span>` : ''}
     </div>
   `).join('');
 }
@@ -756,20 +756,25 @@ $id('btnUpdateSubmit').addEventListener('click', async () => {
   let toAdd     = [];
 
   if (filesToProcess.length) {
-    // list() works per folder prefix; check each folder that has files
+    // Determine unique folder prefixes for each file
+    // Structure: {paiCode}/file.svg | {paiCode}/svg/file.svg | {paiCode}/thumb/file.jpg
     const foldersToCheck = new Set(filesToProcess.map(fp => {
       const parts = fp.path.split('/');
-      parts.pop();
+      parts.pop(); // remove filename
       return parts.join('/');
     }));
 
     const existingPaths = new Set();
     for (const folder of foldersToCheck) {
-      const folderPrefix = folder.includes('/') ? folder.split('/').slice(1).join('/') : '';
-      const { data: listed } = await window.sb.storage
+      const { data: listed, error: listErr } = await window.sb.storage
         .from(BUCKET)
         .list(folder, { limit: 1000 });
-      (listed || []).forEach(item => existingPaths.add(`${folder}/${item.name}`));
+      if (!listErr && listed) {
+        // Filter out sub-folder entries (they have id === null)
+        listed
+          .filter(item => item.id !== null)
+          .forEach(item => existingPaths.add(`${folder}/${item.name}`));
+      }
     }
 
     for (const fp of filesToProcess) {
