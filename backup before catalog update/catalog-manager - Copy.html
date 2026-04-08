@@ -827,33 +827,11 @@
           </div>
         </div>
 
-        <!-- Files to Upload or Replace -->
-        <div class="fileSection">
-          <div class="fileSectionTitle">Files to Upload or Replace</div>
-          <div style="display:grid; gap:16px;">
-            <div class="fileInput">
-              <label>Parent Assembly SVG <span style="color:var(--gray2); font-weight:400;">(optional)</span></label>
-              <input type="file" id="uParentSvg" accept=".svg" />
-              <div class="fileHint">File must be named <code>pai_{PAI code}.svg</code>. If a file with this name already exists it will be replaced.</div>
-            </div>
-            <div class="fileInput">
-              <label>Subassemblies — SVG <span style="color:var(--gray2); font-weight:400;">(optional, multiple)</span></label>
-              <input type="file" id="uSubSvgs" accept=".svg" multiple />
-              <div class="fileHint">Only SVG files accepted. Existing files with the same name will be replaced.</div>
-            </div>
-            <div class="fileInput">
-              <label>Thumbnails — JPEG or PNG <span style="color:var(--gray2); font-weight:400;">(optional, multiple)</span></label>
-              <input type="file" id="uThumbs" accept=".jpg,.jpeg,.png" multiple />
-              <div class="fileHint">File names must follow the pattern <code>thumb_{code}.jpg/png</code>. Existing files with the same name will be replaced.</div>
-            </div>
-          </div>
-        </div>
-
         <!-- Change note -->
         <div class="cmCard">
           <div class="cmSectionTitle">Change Note</div>
           <div class="field">
-            <label>Describe what was changed <span class="req">*</span></label>
+            <label>Describe what was changed <span class="opt">(optional, recorded in change log)</span></label>
             <textarea id="uChangeNote" placeholder="e.g. Updated description and changed status to Published…"></textarea>
           </div>
         </div>

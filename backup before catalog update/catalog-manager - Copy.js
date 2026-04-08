@@ -729,127 +729,56 @@ $id('btnClearCatSel').addEventListener('click', () => {
 
 // ── Submit update ──────────────────────────────────────────────────────────
 
-$id('btnUpdateSubmit').addEventListener('click', async () => {
+$id('btnUpdateSubmit').addEventListener('click', () => {
   if (!selectedCatalog) return;
-
-  const name      = $id('uName').value.trim();
-  const note      = $id('uChangeNote').value.trim();
-  const paiCode   = selectedCatalog.pai_code;
-
-  // Validation
+  const name = $id('uName').value.trim();
   if (!name) { showResult('Validation Error', '<p>Name is required.</p>', true); return; }
-  if (!note) { showResult('Validation Error', '<p>Change note is required.</p>', true); return; }
 
-  // Collect selected files
-  const parentFile  = $id('uParentSvg').files[0] || null;
-  const subFiles    = Array.from($id('uSubSvgs').files);
-  const thumbFiles  = Array.from($id('uThumbs').files);
-
-  // Build full list of (storagePath, file) pairs
-  const filesToProcess = [];
-  if (parentFile) filesToProcess.push({ path: `${paiCode}/${parentFile.name}`,        file: parentFile });
-  subFiles.forEach(f  => filesToProcess.push({ path: `${paiCode}/svg/${f.name}`,   file: f }));
-  thumbFiles.forEach(f => filesToProcess.push({ path: `${paiCode}/thumb/${f.name}`, file: f }));
-
-  // Check which files already exist in storage
-  let toReplace = [];
-  let toAdd     = [];
-
-  if (filesToProcess.length) {
-    // list() works per folder prefix; check each folder that has files
-    const foldersToCheck = new Set(filesToProcess.map(fp => {
-      const parts = fp.path.split('/');
-      parts.pop();
-      return parts.join('/');
-    }));
-
-    const existingPaths = new Set();
-    for (const folder of foldersToCheck) {
-      const folderPrefix = folder.includes('/') ? folder.split('/').slice(1).join('/') : '';
-      const { data: listed } = await window.sb.storage
-        .from(BUCKET)
-        .list(folder, { limit: 1000 });
-      (listed || []).forEach(item => existingPaths.add(`${folder}/${item.name}`));
-    }
-
-    for (const fp of filesToProcess) {
-      if (existingPaths.has(fp.path)) toReplace.push(fp);
-      else toAdd.push(fp);
-    }
-  }
-
-  // Build confirmation HTML
-  const fmtList = arr => arr.length
-    ? `<ul style="margin:4px 0 0;padding-left:18px;">${arr.map(fp => `<li><code>${esc(fp.file.name)}</code></li>`).join('')}</ul>`
-    : `<p style="margin:4px 0 0;color:var(--gray2);font-size:13px;">none</p>`;
-
-  const confirmHtml = `
-    <p>Are you sure you want to update catalog <strong>${esc(name)}</strong>?</p>
-    <p style="margin-top:14px;font-weight:700;font-size:13px;">Files to be replaced:</p>
-    ${fmtList(toReplace)}
-    <p style="margin-top:12px;font-weight:700;font-size:13px;">Files to be added for the first time:</p>
-    ${fmtList(toAdd)}
-  `;
-
-  showConfirm(confirmHtml, () => doUpdateCatalog({ toReplace, toAdd, name, note }));
+  showConfirm(
+    `Save changes to catalog <strong>${esc(name)}</strong> (PAI: <strong>${esc(selectedCatalog.pai_code)}</strong>)?`,
+    doUpdateCatalog
+  );
 });
 
-async function doUpdateCatalog({ toReplace, toAdd, name, note }) {
+async function doUpdateCatalog() {
   const btn = $id('btnUpdateSubmit');
   btn.disabled = true;
 
   try {
+    const name        = $id('uName').value.trim();
     const description = $id('uDescription').value.trim() || null;
     const status      = $id('uStatus').value;
+    const note        = $id('uChangeNote').value.trim() || null;
 
-    // Upload files (replace = upsert:true, add = upsert:false)
-    for (const fp of toReplace) {
-      const mime = fp.file.name.endsWith('.svg') ? 'image/svg+xml'
-                 : fp.file.name.match(/\.png$/i) ? 'image/png' : 'image/jpeg';
-      const { error } = await window.sb.storage.from(BUCKET).upload(fp.path, fp.file, { contentType: mime, upsert: true });
-      if (error) throw new Error(`Failed to replace ${fp.file.name}: ${error.message}`);
-    }
-    for (const fp of toAdd) {
-      const mime = fp.file.name.endsWith('.svg') ? 'image/svg+xml'
-                 : fp.file.name.match(/\.png$/i) ? 'image/png' : 'image/jpeg';
-      const { error } = await window.sb.storage.from(BUCKET).upload(fp.path, fp.file, { contentType: mime, upsert: false });
-      if (error) throw new Error(`Failed to upload ${fp.file.name}: ${error.message}`);
-    }
-
-    // Detect which metadata fields changed
     const changed = [];
-    if (name        !== selectedCatalog.name)                  changed.push('name');
-    if (description !== (selectedCatalog.description || null)) changed.push('description');
-    if (status      !== selectedCatalog.status)                changed.push('status');
-    if (toReplace.length || toAdd.length)                      changed.push('files');
+    if (name        !== selectedCatalog.name)                        changed.push('name');
+    if (description !== (selectedCatalog.description || null))       changed.push('description');
+    if (status      !== selectedCatalog.status)                      changed.push('status');
 
-    // Get current user
     const { data: { session } } = await window.sb.auth.getSession();
     const userId = session?.user?.id || null;
+
     let userName = userId ? userId.slice(0, 8) : 'unknown';
     if (userId) {
       const { data: prof } = await window.sb
-        .from('profiles').select('requested_full_name, role')
-        .eq('user_id', userId).maybeSingle();
+        .from('profiles')
+        .select('requested_full_name, role')
+        .eq('user_id', userId)
+        .maybeSingle();
       if (prof) userName = prof.requested_full_name || prof.role || userName;
     }
-
-    // Build note text: change note + file lists
-    const replacedNames = toReplace.length ? toReplace.map(fp => fp.file.name).join('\n') : 'none';
-    const addedNames    = toAdd.length     ? toAdd.map(fp => fp.file.name).join('\n')     : 'none';
-    const fullNote = `${note}\nReplaced files:\n${replacedNames}\nAdded new files:\n${addedNames}`;
 
     const logEntry = {
       ts:        new Date().toISOString(),
       user_id:   userId,
       user_name: userName,
       fields:    changed,
-      note:      fullNote,
+      ...(note ? { note } : {}),
     };
 
     const newChangeLog = [...(selectedCatalog.change_log || []), logEntry];
 
-    const { error: dbErr } = await window.sb
+    const { error } = await window.sb
       .from('catalogs')
       .update({
         name,
@@ -861,19 +790,14 @@ async function doUpdateCatalog({ toReplace, toAdd, name, note }) {
       })
       .eq('id', selectedCatalog.id);
 
-    if (dbErr) throw new Error(dbErr.message);
-
-    // Reset file inputs
-    $id('uParentSvg').value = '';
-    $id('uSubSvgs').value   = '';
-    $id('uThumbs').value    = '';
+    if (error) throw new Error(error.message);
 
     showResult(
       'Catalog Updated',
       `<p>Catalog <strong>${esc(name)}</strong> saved successfully.</p>
-       ${changed.length ? `<p>Fields changed: <strong>${esc(changed.join(', '))}</strong>.</p>` : '<p>No field values were changed.</p>'}
-       ${toReplace.length ? `<p>${toReplace.length} file(s) replaced.</p>` : ''}
-       ${toAdd.length     ? `<p>${toAdd.length} file(s) added.</p>`        : ''}`
+       ${changed.length
+         ? `<p>Fields changed: <strong>${esc(changed.join(', '))}</strong>.</p>`
+         : '<p>No field values were changed.</p>'}`
     );
 
     await loadCatalogsForUpdate();
