@@ -3,9 +3,41 @@
 <head>
   <meta charset="utf-8" />
   <title>Redirect</title>
-  <meta http-equiv="refresh" content="0; url=client-area.html" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
 </head>
 <body>
-  Redirecting...
+  <script>
+    (async function () {
+      // Detect PASSWORD_RECOVERY before redirecting
+      const hash = window.location.hash.slice(1);
+      const params = new URLSearchParams(hash);
+      const type = params.get('type');
+      const accessToken = params.get('access_token');
+
+      if (type === 'recovery' && accessToken) {
+        window.location.replace('reset-password.html' + window.location.hash);
+        return;
+      }
+
+      // Wait for Supabase to fire PASSWORD_RECOVERY event (ConfirmationURL flow)
+      let redirected = false;
+      if (window.sb) {
+        window.sb.auth.onAuthStateChange((event) => {
+          if (event === 'PASSWORD_RECOVERY' && !redirected) {
+            redirected = true;
+            window.location.replace('reset-password.html');
+          }
+        });
+      }
+
+      // Give Supabase a moment to process, then proceed normally
+      await new Promise(r => setTimeout(r, 800));
+
+      if (!redirected) {
+        window.location.replace('client-area.html');
+      }
+    })();
+  </script>
 </body>
 </html>
