@@ -72,7 +72,7 @@ const state = {
   catalog: null,   // { id, name, pai_code } from DB
   searchMeta: null,
   selected: null,
-  cart: [],
+  cart: JSON.parse(localStorage.getItem('catalogCart') || '[]'),
   path: [],
   map: new Map(),
   bomRows: [],
@@ -287,8 +287,15 @@ function renderCartInto(bodyEl) {
 }
 
 function renderCart() {
+  localStorage.setItem('catalogCart', JSON.stringify(state.cart));
   renderCartInto($('cartBody'));       // carrinho pequeno
   renderCartInto($('cartBodyModal'));  // carrinho grande (modal)
+  const badge = $('cartBtnBadge');
+  if (badge) {
+    const total = state.cart.reduce((s, r) => s + (r.qty || 1), 0);
+    if (total > 0) { badge.textContent = total; badge.style.display = ''; }
+    else { badge.style.display = 'none'; }
+  }
 }
 
 function openOrderModal() {
@@ -1216,14 +1223,22 @@ const pan = (() => {
     setCursor();
   }
 
+  function isTypingTarget(el) {
+    if (!el) return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
   function onKeyDown(e) {
     if (e.code !== 'Space') return;
+    if (isTypingTarget(document.activeElement)) return;
     if (!spaceDown) down();
     e.preventDefault();
   }
 
   function onKeyUp(e) {
     if (e.code !== 'Space') return;
+    if (isTypingTarget(document.activeElement)) return;
     up();
     e.preventDefault();
   }

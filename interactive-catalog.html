@@ -57,6 +57,11 @@
         <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
       </nav>
 
+      <button type="button" class="cartBtn" id="btnCart" title="Review cart" aria-label="Review cart" style="display:none">
+        🛒
+        <span class="cartBtnBadge" id="cartBtnBadge" style="display:none"></span>
+      </button>
+
       <div class="navDivider"></div>
       <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">Sign out</button>
     </div>
@@ -252,7 +257,17 @@
           .select("role")
           .eq("user_id", session.user.id)
           .maybeSingle();
-        setupNavTabs(prof?.role || "", "ecatalog");
+        const role = prof?.role || "";
+        setupNavTabs(role, "ecatalog");
+        if (role === 'customer') {
+          const btnCart = document.getElementById('btnCart');
+          if (btnCart) {
+            btnCart.style.display = '';
+            btnCart.addEventListener('click', () => {
+              document.getElementById('btnSend')?.click();
+            });
+          }
+        }
       } catch {}
 
       const v = Date.now();

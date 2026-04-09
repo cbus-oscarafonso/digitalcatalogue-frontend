@@ -296,6 +296,11 @@
       <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
     </nav>
 
+    <button type="button" class="cartBtn" id="btnCart" title="Review cart" aria-label="Review cart" style="display:none">
+      🛒
+      <span class="cartBtnBadge" id="cartBtnBadge" style="display:none"></span>
+    </button>
+
     <div class="navDivider"></div>
     <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">Sign out</button>
   </header>
@@ -399,6 +404,45 @@
         window.__userRole = role;
 
         setupNavTabs(role, "clientarea");
+
+        if (role === 'customer') {
+          const btnCart = document.getElementById('btnCart');
+          const modal = document.getElementById('orderModal');
+          if (btnCart && modal) {
+            // show badge if cart has items
+            const savedCart = JSON.parse(localStorage.getItem('catalogCart') || '[]');
+            const total = savedCart.reduce((s, r) => s + (r.qty || 1), 0);
+            const badge = document.getElementById('cartBtnBadge');
+            if (total > 0 && badge) { badge.textContent = total; badge.style.display = ''; }
+
+            btnCart.style.display = '';
+            btnCart.addEventListener('click', () => {
+              const cart = JSON.parse(localStorage.getItem('catalogCart') || '[]');
+              const bodyEl = document.getElementById('cartBodyModal');
+              if (bodyEl) {
+                if (!cart.length) {
+                  bodyEl.innerHTML = '<div style="padding:16px;color:var(--gray,#878787);text-align:center;font-size:13px;">Your cart is empty. Go to the catalog to add items.</div>';
+                } else {
+                  bodyEl.innerHTML = '';
+                  cart.forEach(row => {
+                    const r = document.createElement('div');
+                    r.className = 'cartRow';
+                    r.innerHTML = `<div class="colPN">${_escHtml(row.partNo)}</div><div class="colDesc">${_escHtml(row.desc)}</div><div class="colPrice">${_escHtml(row.price || 'TBA')}</div><div class="colQty">${_escHtml(String(row.qty))}</div><div class="colRm"></div>`;
+                    bodyEl.appendChild(r);
+                  });
+                }
+              }
+              modal.hidden = false;
+            });
+
+            document.getElementById('btnModalClose')?.addEventListener('click', () => { modal.hidden = true; });
+            document.getElementById('orderModalBackdrop')?.addEventListener('click', () => { modal.hidden = true; });
+            document.getElementById('btnGoToCatalog')?.addEventListener('click', () => {
+              modal.hidden = true;
+              openCatalogPicker(role);
+            });
+          }
+        }
       } catch {}
 
       const v = Date.now();
@@ -412,6 +456,32 @@
       document.body.appendChild(logout);
     })();
   </script>
+
+  <!-- ===== Cart Modal (customer) ===== -->
+  <div id="orderModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="orderModalBackdrop"></div>
+    <div class="modalPanel" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
+      <div class="modalTop">
+        <div class="panelTitle" id="orderModalTitle">Review order request</div>
+      </div>
+      <div class="modalBody">
+        <div class="cart cartModal">
+          <div class="cartHeader">
+            <div class="colPN">P/N</div>
+            <div class="colDesc">Description</div>
+            <div class="colPrice">Price</div>
+            <div class="colQty">Qty</div>
+            <div class="colRm"></div>
+          </div>
+          <div class="cartBody" id="cartBodyModal"></div>
+        </div>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnModalClose" type="button">Close</button>
+        <button class="btn primary" id="btnGoToCatalog" type="button">Go to catalog</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Catalog Picker Modal -->
   <div id="catalogPickerModal" class="modalOverlay" hidden>
