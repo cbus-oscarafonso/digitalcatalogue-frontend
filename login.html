@@ -191,6 +191,7 @@
     <!-- LOGIN mode buttons -->
     <div id="loginModeButtons">
       <button id="btnLogin" class="btn primary" type="button">Sign in</button>
+      <button id="btnForgotPassword" class="btn" type="button">Forgot password?</button>
       <div class="divider"></div>
       <button id="btnShowClientSignup" class="btn" type="button">Create client user account</button>
       <button id="btnShowInternalSignup" class="btn" type="button">Create internal user account</button>
@@ -433,6 +434,23 @@
       clearFields();
       setMode("login");
       showToast("Account created. Awaiting approval.", true);
+    });
+
+    // ── Forgot password ───────────────────────────────────
+    $("btnForgotPassword").addEventListener("click", async () => {
+      if (!sb) { showToast("Supabase client missing.", false); return; }
+      const email = $("email").value.trim();
+      if (!email) { showToast("Please enter your email address first.", false); $("email").focus(); return; }
+      if (!isValidEmail(email)) { showToast("Please enter a valid email address.", false); $("email").focus(); return; }
+
+      setLoading("btnForgotPassword", true, "Forgot password?");
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://cbus-oscarafonso.github.io/digitalcatalogue-frontend"
+      });
+      setLoading("btnForgotPassword", false, "Forgot password?");
+
+      if (error) { showToast("Error: " + error.message, false); return; }
+      showToast("Password reset email sent. Check your inbox.", true);
     });
 
     // ── Enter key ─────────────────────────────────────────
