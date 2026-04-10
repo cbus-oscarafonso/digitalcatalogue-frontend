@@ -133,7 +133,15 @@ function row(pn, desc, price, qty) {
 
 
 
-// toast() is provided globally by toast.js (loaded via <script> in the HTML).
+function toast(msg) {
+  const t = $('toast');
+  t.classList.remove('show');
+  t.textContent = msg;
+  void t.offsetWidth; // force reflow so translateX(-50%) uses the new width
+  t.classList.add('show');
+  clearTimeout(toast._tm);
+  toast._tm = setTimeout(() => t.classList.remove('show'), 2400);
+}
 
 async function loadCatalog() {
   const params = new URLSearchParams(window.location.search);
@@ -141,7 +149,7 @@ async function loadCatalog() {
   if (!paiCode) throw new Error('Missing ?catalog= URL parameter.');
 
   const { data: { session } } = await window.sb.auth.getSession();
-  let isStaff = false;
+  let allowDraft = false;
   if (session) {
     const { data: prof } = await window.sb
       .from('profiles')
@@ -149,7 +157,7 @@ async function loadCatalog() {
       .eq('user_id', session.user.id)
       .maybeSingle();
     const role = prof?.role || '';
-    isStaff = role === 'admin' || role === 'catalog_manager';
+    allowDraft = role === 'admin' || role === 'catalog_manager';
   }
 
   const query = window.sb
@@ -157,8 +165,8 @@ async function loadCatalog() {
     .select('id, name, pai_code, status')
     .eq('pai_code', paiCode);
 
-  const { data, error } = await (isStaff
-    ? query.in('status', ['published', 'draft', 'archived'])
+  const { data, error } = await (allowDraft
+    ? query.in('status', ['published', 'draft'])
     : query.eq('status', 'published'))
     .maybeSingle();
 
@@ -304,7 +312,7 @@ function closeOrderModal() {
 
 function setupUI() {
   async function sendOrderRequest() {
-    if (!state.cart.length) { toast.error('Your cart is empty!'); return; }
+    if (!state.cart.length) { toast('Your cart is empty!'); return; }
 
     const btnSend = $('btnModalSend');
     if (btnSend) { btnSend.disabled = true; btnSend.textContent = 'Sending…'; }
@@ -347,13 +355,13 @@ function setupUI() {
 
       if (error) {
         console.error('Supabase insert failed:', error);
-        toast.error('Failed to save order request. Please try again.');
+        toast('Failed to save order request. Please try again.');
         if (btnSend) { btnSend.disabled = false; btnSend.textContent = 'Send order request'; }
         return;
       }
     } catch (e) {
       console.error('Order request error:', e);
-      toast.error('Failed to save order request. Please try again.');
+      toast('Failed to save order request. Please try again.');
       if (btnSend) { btnSend.disabled = false; btnSend.textContent = 'Send order request'; }
       return;
     }
@@ -400,7 +408,7 @@ function setupUI() {
   $('qtyUp').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) + 1)));
   $('qtyInput').addEventListener('change', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10))));
   $('btnSend').addEventListener('click', () => {
-    if (!state.cart.length) { toast.error('Your cart is empty!'); return; }
+    if (!state.cart.length) { toast('Your cart is empty!'); return; }
     renderCart();       // garante sync
     openOrderModal();   // ✅ agora abre modal (não envia)
   });
@@ -1003,7 +1011,7 @@ async function loadSvg(url) {
     try {
       wireBridge();
     } catch (e) {
-      toast.error('map falhou');
+      toast('map falhou');
     }
 
     // ✅ Apply pending selection from Search page (auto-select + full breadcrumb path)

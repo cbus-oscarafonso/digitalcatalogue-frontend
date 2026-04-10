@@ -241,7 +241,7 @@
       const listEl = document.getElementById('catalogPickerList');
       listEl.innerHTML = '<div class="catPickerLoading">Loading…</div>';
       const isDraftVisible = ['admin','catalog_manager'].includes(role);
-      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft','archived'] : ['published']).order('name');
+      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft'] : ['published']).order('name');
       if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
       const showStatus = isDraftVisible;
       const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;

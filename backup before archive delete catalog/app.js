@@ -141,7 +141,7 @@ async function loadCatalog() {
   if (!paiCode) throw new Error('Missing ?catalog= URL parameter.');
 
   const { data: { session } } = await window.sb.auth.getSession();
-  let isStaff = false;
+  let allowDraft = false;
   if (session) {
     const { data: prof } = await window.sb
       .from('profiles')
@@ -149,7 +149,7 @@ async function loadCatalog() {
       .eq('user_id', session.user.id)
       .maybeSingle();
     const role = prof?.role || '';
-    isStaff = role === 'admin' || role === 'catalog_manager';
+    allowDraft = role === 'admin' || role === 'catalog_manager';
   }
 
   const query = window.sb
@@ -157,8 +157,8 @@ async function loadCatalog() {
     .select('id, name, pai_code, status')
     .eq('pai_code', paiCode);
 
-  const { data, error } = await (isStaff
-    ? query.in('status', ['published', 'draft', 'archived'])
+  const { data, error } = await (allowDraft
+    ? query.in('status', ['published', 'draft'])
     : query.eq('status', 'published'))
     .maybeSingle();
 

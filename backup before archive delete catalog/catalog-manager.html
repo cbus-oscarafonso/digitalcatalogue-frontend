@@ -280,6 +280,57 @@
 
     .vehicleTable tr:hover td { background: rgba(0,55,100,.02); }
 
+    /* Rows for already-associated vehicles (Update tab) */
+    .vehicleTable tr.assoc td {
+      background: rgba(0, 55, 100, .08);
+    }
+    .vehicleTable tr.assoc:hover td {
+      background: rgba(0, 55, 100, .12);
+    }
+    .vehicleTable tr.assoc.unlocked td {
+      background: rgba(5, 150, 105, .06);
+    }
+    .vehicleTable tr.assoc.unlocked:hover td {
+      background: rgba(5, 150, 105, .10);
+    }
+
+    /* Lock button in the first column of associated rows */
+    .lockBtn {
+      background: none;
+      border: 1px solid rgba(135, 135, 135, .35);
+      border-radius: 6px;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      margin-left: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue);
+      vertical-align: middle;
+      transition: border-color .15s, background .15s;
+    }
+    .lockBtn:hover {
+      border-color: var(--blue);
+      background: rgba(0, 55, 100, .05);
+    }
+    .lockBtn.unlocked {
+      color: #059669;
+      border-color: rgba(5, 150, 105, .5);
+    }
+    .lockBtn.unlocked:hover {
+      background: rgba(5, 150, 105, .08);
+    }
+
+    /* Disabled checkbox on locked (associated) rows */
+    .vehicleTable tr.assoc:not(.unlocked) input[type="checkbox"] {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
     .vehicleTable input[type="checkbox"] {
       width: 16px;
       height: 16px;
@@ -589,6 +640,8 @@
     .clNote { color: var(--gray); font-style: italic; }
     .clEmpty { padding: 16px; color: var(--gray2); font-size: 13px; text-align: center; }
   </style>
+  <script src="user-badge.js"></script>
+  <script src="toast.js"></script>
 </head>
 
 <body>
@@ -608,6 +661,8 @@
       <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
     </nav>
 
+    <div class="navDivider"></div>
+    <div class="userBadge" id="userBadge" style="display:none"></div>
     <div class="navDivider"></div>
     <button class="clientBtn btn-signout" id="btnLogout" type="button">Sign out</button>
   </header>
@@ -827,11 +882,74 @@
           </div>
         </div>
 
+        <!-- Files to Upload or Replace -->
+        <div class="fileSection">
+          <div class="fileSectionTitle">Files to Upload or Replace</div>
+          <div style="display:grid; gap:16px;">
+            <div class="fileInput">
+              <label>Parent Assembly SVG <span style="color:var(--gray2); font-weight:400;">(optional)</span></label>
+              <input type="file" id="uParentSvg" accept=".svg" />
+              <div class="fileHint">File must be named <code>pai_{PAI code}.svg</code>. If a file with this name already exists it will be replaced.</div>
+            </div>
+            <div class="fileInput">
+              <label>Subassemblies — SVG <span style="color:var(--gray2); font-weight:400;">(optional, multiple)</span></label>
+              <input type="file" id="uSubSvgs" accept=".svg" multiple />
+              <div class="fileHint">Only SVG files accepted. Existing files with the same name will be replaced.</div>
+            </div>
+            <div class="fileInput">
+              <label>Thumbnails — JPEG or PNG <span style="color:var(--gray2); font-weight:400;">(optional, multiple)</span></label>
+              <input type="file" id="uThumbs" accept=".jpg,.jpeg,.png" multiple />
+              <div class="fileHint">File names must follow the pattern <code>thumb_{code}.jpg/png</code>. Existing files with the same name will be replaced.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Associate Vehicles -->
+        <div class="cmCard">
+          <div class="cmSectionTitle">Associate Vehicles</div>
+          <div class="vehiclesNote">
+            Select the vehicles to associate with this catalog. Already-associated vehicles appear highlighted —
+            click the <strong>🔒</strong> icon to unlock a row before un-associating.
+            If the vehicle you are looking for is not listed,
+            please <a href="vehicle-registry.html">register it in the system</a> first.
+          </div>
+
+          <div class="vehicleFilters">
+            <input type="text" id="uFilterPep2"      placeholder="Filter PEP code…" />
+            <input type="text" id="uFilterBusNo2"    placeholder="Filter Bus No…" />
+            <input type="text" id="uFilterCustomer2" placeholder="Filter customer…" />
+            <input type="text" id="uFilterVin2"      placeholder="Filter VIN…" />
+          </div>
+
+          <div class="selectAllRow">
+            <input type="checkbox" id="uChkSelectAll" />
+            <label for="uChkSelectAll">Select / deselect all visible (unlocked only)</label>
+            <span id="uSelectedCount" style="margin-left:auto; color:var(--blue); font-weight:700;"></span>
+          </div>
+
+          <div class="vehicleTableWrap">
+            <table class="vehicleTable" id="uVehicleTable">
+              <thead>
+                <tr>
+                  <th style="width:72px;"></th>
+                  <th data-col="pep_code">PEP Code <span class="sortArrow">↕</span></th>
+                  <th data-col="cobus_bus_no">Cobus Bus No. <span class="sortArrow">↕</span></th>
+                  <th data-col="customer">Customer <span class="sortArrow">↕</span></th>
+                  <th data-col="vin">VIN <span class="sortArrow">↕</span></th>
+                </tr>
+              </thead>
+              <tbody id="uVehicleTbody">
+                <tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">Loading vehicles…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Change note -->
         <div class="cmCard">
           <div class="cmSectionTitle">Change Note</div>
           <div class="field">
-            <label>Describe what was changed <span class="opt">(optional, recorded in change log)</span></label>
+            <label>Describe what was changed <span class="req">*</span></label>
             <textarea id="uChangeNote" placeholder="e.g. Updated description and changed status to Published…"></textarea>
           </div>
         </div>
@@ -858,7 +976,7 @@
   <div class="cmModalOverlay" id="confirmModal" style="display:none;">
     <div class="cmModalBackdrop"></div>
     <div class="cmModalBox">
-      <div class="cmModalTitle">Confirm Catalog Submission</div>
+      <div class="cmModalTitle" id="confirmModalTitle">Confirm Catalog Submission</div>
       <div class="cmModalBody" id="confirmModalBody"></div>
       <div class="cmModalFooter">
         <button class="btn" id="btnConfirmCancel" type="button">Cancel</button>
@@ -941,7 +1059,7 @@
 
       const { data: prof } = await window.sb
         .from("profiles")
-        .select("role, status, requested_full_name")
+        .select("role, status, requested_full_name, customer_id")
         .eq("user_id", session.user.id)
         .maybeSingle();
 
@@ -951,6 +1069,7 @@
       }
 
       setupNavTabs(prof.role, "catalogmgr");
+      window.renderUserBadge?.(session, prof);
 
       window.revealPage();
 
@@ -964,5 +1083,7 @@
       document.body.appendChild(logout);
     })();
   </script>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

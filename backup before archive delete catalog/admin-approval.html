@@ -152,6 +152,20 @@
       font: 500 14px "Rubik", system-ui, sans-serif;
     }
 
+    /* Prevent checkbox from inheriting full-width input styles */
+    input[type="checkbox"] {
+      width: auto;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      margin: 0;
+      cursor: pointer;
+      accent-color: var(--blue, #003764);
+      width: 16px;
+      height: 16px;
+    }
+
     input:focus,
     textarea:focus,
     select:focus {
@@ -196,6 +210,13 @@
       background: #b91c1c;
       border-color: #b91c1c;
       color: #fff;
+    }
+
+    .btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      filter: none;
+      transform: none;
     }
 
     .actions {
@@ -396,6 +417,80 @@
       box-shadow: 0 0 0 3px rgba(0, 55, 100, .12);
     }
 
+    /* ── Invite panel: role checkbox row ── */
+    .inviteRoleRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 0 0 0;
+    }
+
+    .inviteRoleRow label {
+      margin: 0;
+      font-size: 14px;
+      color: #111827;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    select:disabled {
+      background: #f3f4f6;
+      color: #9ca3af;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    /* ── User-exists modal ── */
+    .modalOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modalOverlay[hidden] { display: none !important; }
+
+    .modalBackdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+    }
+
+    .modalPanel {
+      position: relative;
+      background: var(--card, #fff);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.22);
+      max-width: 440px;
+      width: calc(100vw - 32px);
+      z-index: 1;
+    }
+
+    .modalPanel--sm { max-width: 380px; }
+
+    .modalTop {
+      padding: 14px 18px;
+      border-radius: 18px 18px 0 0;
+    }
+
+    .panelTitle {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .modalBody {
+      padding: 18px;
+    }
+
+    .modalFooter {
+      padding: 0 18px 18px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
     @media (max-width: 1100px) {
       .customerAdminGrid {
         grid-template-columns: 1fr;
@@ -413,6 +508,8 @@
       }
     }
   </style>
+  <script src="user-badge.js"></script>
+  <script src="toast.js"></script>
 </head>
 
 <body>
@@ -432,13 +529,116 @@
 
     <div class="navDivider"></div>
     <span id="whoami" style="display:none"></span>
+    <div class="userBadge" id="userBadge" style="display:none"></div>
+    <div class="navDivider"></div>
     <button class="clientBtn btn-signout" id="btnLogout" type="button">Sign out</button>
   </header>
 
   <main class="layoutAdmin">
 
-    <!-- ── PENDING CLIENT USERS ────────────────────────── -->
-    <section class="adminPanel">
+    <!-- ── INVITE NEW USER ─────────────────────────────────── -->
+    <section class="adminPanel" id="invitePanel">
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Invite new user</div>
+      </div>
+
+      <div class="adminPanelBody">
+
+        <!-- Row: email + role checkbox + role selector -->
+        <div class="row">
+          <div class="field">
+            <label for="inviteEmail">User email</label>
+            <input id="inviteEmail" type="email" placeholder="user@example.com" autocomplete="off" />
+          </div>
+
+          <div class="field" style="min-width:auto;flex:0 0 auto;align-self:flex-end;">
+            <div class="inviteRoleRow">
+              <input type="checkbox" id="inviteRoleCheck" />
+              <label for="inviteRoleCheck">Assign a role?</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="inviteRoleSelect">Role</label>
+            <select id="inviteRoleSelect" disabled>
+              <option value="">— select role —</option>
+              <!-- Admin option: inserted by JS only for admins -->
+              <option value="client_manager">Client Manager</option>
+              <option value="catalog_manager">Catalog Manager</option>
+              <option value="internal">Internal</option>
+              <option value="customer">Customer</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Customer assignment (shown only when role = customer) -->
+        <div id="inviteCustomerSection" class="hidden" style="margin-top:16px;">
+          <div style="font-size:13px;font-weight:700;color:var(--blue,#003764);margin-bottom:12px;">
+            Assign a customer to this user:
+          </div>
+
+          <div class="choiceGrid">
+            <!-- Use existing -->
+            <div id="inviteExistingChoiceCard" class="choiceCard">
+              <div class="choiceTitle">Use existing customer</div>
+              <div class="field">
+                <label>Search customer</label>
+                <div class="customerSuggestWrap">
+                  <input id="inviteCustomersSelect" class="pickerInput" type="text"
+                    placeholder="Search customer…" autocomplete="off" />
+                  <span class="pickerCaret">▼</span>
+                  <div id="inviteCustomerDropdown" class="pickerDropdown"></div>
+                </div>
+                <div class="small" style="margin-top:6px;">Search and select an existing customer.</div>
+              </div>
+            </div>
+
+            <div class="orSep">OR</div>
+
+            <!-- Create new -->
+            <div id="inviteNewChoiceCard" class="choiceCard">
+              <div class="choiceTitle">Create new customer</div>
+              <div class="row">
+                <div class="field">
+                  <label>New customer name</label>
+                  <input id="inviteNewCustomerName" type="text" placeholder="Customer name…" autocomplete="off" />
+                </div>
+
+                <div class="field">
+                  <label>Country <span class="small">(required)</span></label>
+                  <div class="pickerWrap">
+                    <input id="inviteCountrySearch" class="pickerInput" type="text"
+                      placeholder="Select country…" autocomplete="off" disabled />
+                    <span class="pickerCaret">▼</span>
+                    <div id="inviteCountryDropdown" class="pickerDropdown"></div>
+                  </div>
+                  <div class="small" style="margin-top:6px;">Type to search by code or country name.</div>
+                </div>
+
+                <div class="field field-wide">
+                  <label>Notes <span class="small">(optional)</span></label>
+                  <textarea id="inviteCustomerNotes" placeholder="Internal notes…" disabled></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn" id="btnClearInviteCustomer" type="button">Clear customer choice</button>
+          </div>
+        </div>
+
+        <!-- Bottom actions -->
+        <div class="actions" style="margin-top:16px;">
+          <button class="btn primary" id="btnSendInvite" type="button">Send invitation</button>
+          <button class="btn" id="btnClearInvite" type="button">Clear</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── PENDING CLIENT USERS ────────────────────────────── -->
+    <section class="adminPanel" data-panel-pending>
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Pending client users</div>
       </div>
@@ -518,8 +718,8 @@
       </div>
     </section>
 
-    <!-- ── PENDING INTERNAL USERS ──────────────────────── -->
-    <section class="adminPanel">
+    <!-- ── PENDING INTERNAL USERS ──────────────────────────── -->
+    <section class="adminPanel" data-panel-pending>
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Pending internal users</div>
 
@@ -545,8 +745,8 @@
       </div>
     </section>
 
-    <!-- ── ACTIVE USERS ────────────────────────────────── -->
-    <section class="adminPanel">
+    <!-- ── ACTIVE USERS ────────────────────────────────────── -->
+    <section class="adminPanel" data-panel-active>
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Active Users</div>
       </div>
@@ -588,7 +788,122 @@
       </div>
     </section>
 
-    <!-- ── CUSTOMERS ───────────────────────────────────── -->
+    <!-- ── VEHICLES ─────────────────────────────────────────── -->
+    <section class="adminPanel">
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Vehicles</div>
+      </div>
+      <div class="adminTableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>PEP Code</th>
+              <th>Model</th>
+              <th>Year</th>
+              <th>VIN</th>
+              <th>Bus No.</th>
+              <th>Motor No.</th>
+              <th>Customer</th>
+            </tr>
+          </thead>
+          <tbody id="vehiclesTbody">
+            <tr><td colspan="7">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── Load new vehicles subpanel ── -->
+      <div class="adminPanelTop" style="border-radius:0;border-top:1px solid rgba(255,255,255,.2);">
+        <div class="panelTitleAdmin">Load new vehicles</div>
+      </div>
+      <div class="adminPanelBody">
+        <div class="actions" style="margin-bottom:14px;">
+          <button class="btn primary" id="btnAddVehicleRow" type="button">+ Add new line</button>
+          <button class="btn" id="btnLoadVehiclesCsv" type="button">Load vehicles from CSV</button>
+          <input id="vehiclesCsvInput" type="file" accept=".csv" style="display:none" />
+          <a class="btn" href="assets/vehicles-template.csv" download>Download CSV template</a>
+          <button class="btn btn-danger" id="btnClearVehicles" type="button">Clear vehicles</button>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table id="vehiclesInputTable" style="min-width:900px;">
+            <thead>
+              <tr>
+                <th>PEP Code</th>
+                <th>Model</th>
+                <th>Year</th>
+                <th>VIN</th>
+                <th>Bus No.</th>
+                <th>Motor No.</th>
+                <th>Customer</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="vehiclesInputTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="actions" style="margin-top:14px;">
+          <button class="btn primary" id="btnAddVehiclesToDb" type="button">Add these vehicles to database</button>
+        </div>
+      </div>
+    </section>
+
+  <!-- ── Customer assignment modal ── -->
+  <div id="vehicleCustomerModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="vehicleCustomerBackdrop"></div>
+    <div class="modalPanel" role="dialog" aria-modal="true" style="max-width:560px;">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Assign customers to vehicles</div>
+      </div>
+      <div class="modalBody" style="max-height:60vh;overflow-y:auto;">
+        <p style="font-size:13px;color:#6b7280;margin:0 0 14px;">
+          The following vehicles have no customer assigned. Select a customer for each, or use "Assign all" to apply the same customer to all.
+        </p>
+        <div style="margin-bottom:14px;display:flex;gap:10px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label style="font-size:12px;font-weight:600;color:var(--gray);">Assign same customer to all</label>
+            <select id="vehicleCustomerAssignAll" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font:500 13px 'Rubik',sans-serif;">
+              <option value="">— select customer —</option>
+            </select>
+          </div>
+          <button class="btn primary" id="btnAssignAllCustomer" type="button" style="white-space:nowrap;">Assign all</button>
+        </div>
+        <table style="width:100%;">
+          <thead>
+            <tr>
+              <th style="font-size:12px;color:var(--gray);font-weight:700;padding:8px;">Vehicle (PEP / VIN)</th>
+              <th style="font-size:12px;color:var(--gray);font-weight:700;padding:8px;">Customer</th>
+            </tr>
+          </thead>
+          <tbody id="vehicleCustomerModalTbody"></tbody>
+        </table>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnVehicleCustomerCancel" type="button">Cancel</button>
+        <button class="btn primary" id="btnVehicleCustomerConfirm" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Confirm add vehicles modal ── -->
+  <div id="vehicleConfirmModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="vehicleConfirmBackdrop"></div>
+    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Confirm</div>
+      </div>
+      <div class="modalBody">
+        <p id="vehicleConfirmMessage" style="margin:0;font-size:14px;line-height:1.65;"></p>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnVehicleConfirmCancel" type="button">Cancel</button>
+        <button class="btn primary" id="btnVehicleConfirmYes" type="button">Yes, add</button>
+      </div>
+    </div>
+  </div>
+
+        <!-- ── CUSTOMERS ───────────────────────────────────────── -->
     <section class="adminPanel">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Customers</div>
@@ -679,30 +994,7 @@
     </section>
   </main>
 
-  <div id="toast"></div>
-
-  <style>
-    #toast {
-      position: fixed;
-      bottom: 32px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 14px 24px;
-      border-radius: 10px;
-      font: 600 14px "Rubik", sans-serif;
-      box-shadow: 0 8px 24px rgba(0,0,0,.18);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-      z-index: 9999;
-      text-align: center;
-      max-width: 400px;
-      white-space: pre-line;
-    }
-    #toast.show     { opacity: 1; }
-    #toast.toast-ok  { background: #003764; color: #fff; }
-    #toast.toast-err { background: #b91c1c; color: #fff; }
-  </style>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
     function _escHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
@@ -755,6 +1047,22 @@
       </div>
       <div class="modalFooter">
         <button class="btn" id="btnCatalogPickerClose" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── User already exists modal ─────────────────────────── -->
+  <div id="userExistsModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="userExistsBackdrop"></div>
+    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:#b91c1c;border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">User already exists</div>
+      </div>
+      <div class="modalBody">
+        <p id="userExistsMessage" style="margin:0;font-size:14px;line-height:1.65;color:#111827;"></p>
+      </div>
+      <div class="modalFooter">
+        <button class="btn primary" id="btnUserExistsDismiss" type="button">OK</button>
       </div>
     </div>
   </div>

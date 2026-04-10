@@ -125,8 +125,7 @@
     .extra-fields { display: none; }
     .extra-fields.visible { display: block; }
 
-    /* Toast — inline to avoid race condition with async styles.css.
-       Classes kept in sync with styles.css .toast rules. */
+    /* Toast — inline to avoid race condition with styles.css */
     #toast {
       position: fixed;
       bottom: 32px;
@@ -139,19 +138,16 @@
       opacity: 0;
       transition: opacity 0.3s ease;
       pointer-events: none;
-      z-index: 9999;
+      z-index: 999;
       text-align: center;
-      max-width: 400px;
+      max-width: 340px;
       white-space: pre-line;
     }
 
-    #toast.show             { opacity: 1; }
-    #toast.toast--ok        { background: #003764; color: #fff; }
-    #toast.toast--err       { background: #b91c1c; color: #fff; }
-    #toast.toast--info      { background: #374151; color: #fff; }
+    #toast.show      { opacity: 1; }
+    #toast.toast-ok  { background: #003764; color: #fff; }
+    #toast.toast-err { background: #b91c1c; color: #fff; }
   </style>
-
-  <script src="toast.js"></script>
 </head>
 
 <body>
@@ -214,20 +210,28 @@
     </div>
   </div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div id="toast"></div>
 
   <script>
     const sb = window.sb;
     const $ = (id) => document.getElementById(id);
 
     let mode = "login";
+    let toastTimer = null;
     let loginFailCount = 0;
     let loginLocked = false;
 
-    // toast() / toast.success() / toast.error() provided globally by toast.js.
+    // ── Toast ─────────────────────────────────────────────
+    function showToast(text, ok = true) {
+      const t = $("toast");
+      t.textContent = text;
+      t.className = ok ? "show toast-ok" : "show toast-err";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 4000);
+    }
 
     if (!sb) {
-      toast.error("Supabase client missing. Check supabase-client.js.");
+      showToast("Supabase client missing. Check supabase-client.js.", false);
     }
 
     // Show messages if redirected here by auth-guard
@@ -237,9 +241,9 @@
         reason = sessionStorage.getItem("authError");
         if (reason) sessionStorage.removeItem("authError");
       } catch { }
-      if (reason === "pending")              toast.error("Account created. Awaiting approval.");
-      else if (reason === "profile_missing") toast.error("Account exists but profile is missing. Please contact support.");
-      else if (reason === "blocked")         toast.error("Account not active. Please contact support.");
+      if (reason === "pending")              showToast("Account created. Awaiting approval.", false);
+      else if (reason === "profile_missing") showToast("Account exists but profile is missing. Please contact support.", false);
+      else if (reason === "blocked")         showToast("Account not active. Please contact support.", false);
     })();
 
     // ── Loading state ─────────────────────────────────────
@@ -312,14 +316,14 @@
 
     // ── Sign in ──────────────────────────────────────────
     $("btnLogin").addEventListener("click", async () => {
-      if (!sb) { toast.error("Supabase client missing."); return; }
-      if (loginLocked) { toast.error("Too many failed attempts. Please wait a moment."); return; }
+      if (!sb) { showToast("Supabase client missing.", false); return; }
+      if (loginLocked) { showToast("Too many failed attempts. Please wait a moment.", false); return; }
 
       const email    = $("email").value.trim();
       const password = $("password").value;
 
-      if (!email || !password) { toast.error("Please enter email and password."); return; }
-      if (!isValidEmail(email)) { toast.error("Please enter a valid email address."); return; }
+      if (!email || !password) { showToast("Please enter email and password.", false); return; }
+      if (!isValidEmail(email)) { showToast("Please enter a valid email address.", false); return; }
 
       setLoading("btnLogin", true, "Sign in");
 
@@ -330,10 +334,10 @@
         loginFailCount++;
         if (loginFailCount >= 3) {
           loginLocked = true;
-          toast.error("Too many failed attempts. Please wait 30 seconds.");
+          showToast("Too many failed attempts. Please wait 30 seconds.", false);
           setTimeout(() => { loginLocked = false; loginFailCount = 0; }, 30000);
         } else {
-          toast.error("Login error: " + error.message);
+          showToast("Login error: " + error.message, false);
         }
         return;
       }
@@ -344,7 +348,7 @@
       if (!userId) {
         await sb.auth.signOut().catch(() => {});
         setLoading("btnLogin", false, "Sign in");
-        toast.error("Login error: missing user id.");
+        showToast("Login error: missing user id.", false);
         return;
       }
 
@@ -352,14 +356,14 @@
       if (!chk.ok) {
         await sb.auth.signOut().catch(() => {});
         setLoading("btnLogin", false, "Sign in");
-        if (chk.reason === "pending")              toast.error("Account created. Awaiting approval.");
-        else if (chk.reason === "profile_missing") toast.error("Account exists but profile is missing. Please contact support.");
-        else if (chk.reason === "rls")             toast.error("Account check failed. Contact support.");
-        else                                       toast.error("Account not active. Please contact support.");
+        if (chk.reason === "pending")              showToast("Account created. Awaiting approval.", false);
+        else if (chk.reason === "profile_missing") showToast("Account exists but profile is missing. Please contact support.", false);
+        else if (chk.reason === "rls")             showToast("Account check failed. Contact support.", false);
+        else                                       showToast("Account not active. Please contact support.", false);
         return;
       }
 
-      toast.success("✔ Approved. Redirecting…");
+      showToast("✔ Approved. Redirecting…", true);
       setTimeout(() => window.location.replace(readReturnTo()), 800);
     });
 
@@ -372,7 +376,7 @@
 
     // ── Client signup ─────────────────────────────────────
     $("btnDoClientSignup").addEventListener("click", async () => {
-      if (!sb) { toast.error("Supabase client missing."); return; }
+      if (!sb) { showToast("Supabase client missing.", false); return; }
       const email           = $("email").value.trim();
       const password        = $("password").value;
       const confirmPassword = $("confirmPassword").value;
@@ -380,10 +384,10 @@
       const companyName     = $("companyName").value.trim();
 
       if (!email || !password || !confirmPassword || !fullName || !companyName) {
-        toast.error("Please fill in all fields."); return;
+        showToast("Please fill in all fields.", false); return;
       }
-      if (!isValidEmail(email)) { toast.error("Please enter a valid email address."); return; }
-      if (password !== confirmPassword) { toast.error("Passwords do not match."); return; }
+      if (!isValidEmail(email)) { showToast("Please enter a valid email address.", false); return; }
+      if (password !== confirmPassword) { showToast("Passwords do not match.", false); return; }
 
       setLoading("btnDoClientSignup", true, "Create client user account");
 
@@ -394,16 +398,16 @@
       });
 
       setLoading("btnDoClientSignup", false, "Create client user account");
-      if (error) { toast.error("Signup error: " + error.message); return; }
+      if (error) { showToast("Signup error: " + error.message, false); return; }
 
       clearFields();
       setMode("login");
-      toast.success("Account created. Awaiting approval.");
+      showToast("Account created. Awaiting approval.", true);
     });
 
     // ── Internal signup ───────────────────────────────────
     $("btnDoInternalSignup").addEventListener("click", async () => {
-      if (!sb) { toast.error("Supabase client missing."); return; }
+      if (!sb) { showToast("Supabase client missing.", false); return; }
       const email           = $("email").value.trim();
       const password        = $("password").value;
       const confirmPassword = $("confirmPassword").value;
@@ -411,10 +415,10 @@
       const role            = $("internalRole").value;
 
       if (!email || !password || !confirmPassword || !fullName) {
-        toast.error("Please fill in all fields."); return;
+        showToast("Please fill in all fields.", false); return;
       }
-      if (!isValidEmail(email)) { toast.error("Please enter a valid email address."); return; }
-      if (password !== confirmPassword) { toast.error("Passwords do not match."); return; }
+      if (!isValidEmail(email)) { showToast("Please enter a valid email address.", false); return; }
+      if (password !== confirmPassword) { showToast("Passwords do not match.", false); return; }
 
       setLoading("btnDoInternalSignup", true, "Create internal user account");
 
@@ -425,19 +429,19 @@
       });
 
       setLoading("btnDoInternalSignup", false, "Create internal user account");
-      if (error) { toast.error("Signup error: " + error.message); return; }
+      if (error) { showToast("Signup error: " + error.message, false); return; }
 
       clearFields();
       setMode("login");
-      toast.success("Account created. Awaiting approval.");
+      showToast("Account created. Awaiting approval.", true);
     });
 
     // ── Forgot password ───────────────────────────────────
     $("btnForgotPassword").addEventListener("click", async () => {
-      if (!sb) { toast.error("Supabase client missing."); return; }
+      if (!sb) { showToast("Supabase client missing.", false); return; }
       const email = $("email").value.trim();
-      if (!email) { toast.error("Please enter your email address first."); $("email").focus(); return; }
-      if (!isValidEmail(email)) { toast.error("Please enter a valid email address."); $("email").focus(); return; }
+      if (!email) { showToast("Please enter your email address first.", false); $("email").focus(); return; }
+      if (!isValidEmail(email)) { showToast("Please enter a valid email address.", false); $("email").focus(); return; }
 
       setLoading("btnForgotPassword", true, "Forgot password?");
       const { error } = await sb.auth.resetPasswordForEmail(email, {
@@ -445,8 +449,8 @@
       });
       setLoading("btnForgotPassword", false, "Forgot password?");
 
-      if (error) { toast.error("Error: " + error.message); return; }
-      toast.success("Password reset email sent. Check your inbox.");
+      if (error) { showToast("Error: " + error.message, false); return; }
+      showToast("Password reset email sent. Check your inbox.", true);
     });
 
     // ── Enter key ─────────────────────────────────────────

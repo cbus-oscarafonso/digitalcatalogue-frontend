@@ -280,6 +280,57 @@
 
     .vehicleTable tr:hover td { background: rgba(0,55,100,.02); }
 
+    /* Rows for already-associated vehicles (Update tab) */
+    .vehicleTable tr.assoc td {
+      background: rgba(0, 55, 100, .08);
+    }
+    .vehicleTable tr.assoc:hover td {
+      background: rgba(0, 55, 100, .12);
+    }
+    .vehicleTable tr.assoc.unlocked td {
+      background: rgba(5, 150, 105, .06);
+    }
+    .vehicleTable tr.assoc.unlocked:hover td {
+      background: rgba(5, 150, 105, .10);
+    }
+
+    /* Lock button in the first column of associated rows */
+    .lockBtn {
+      background: none;
+      border: 1px solid rgba(135, 135, 135, .35);
+      border-radius: 6px;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      margin-left: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue);
+      vertical-align: middle;
+      transition: border-color .15s, background .15s;
+    }
+    .lockBtn:hover {
+      border-color: var(--blue);
+      background: rgba(0, 55, 100, .05);
+    }
+    .lockBtn.unlocked {
+      color: #059669;
+      border-color: rgba(5, 150, 105, .5);
+    }
+    .lockBtn.unlocked:hover {
+      background: rgba(5, 150, 105, .08);
+    }
+
+    /* Disabled checkbox on locked (associated) rows */
+    .vehicleTable tr.assoc:not(.unlocked) input[type="checkbox"] {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
     .vehicleTable input[type="checkbox"] {
       width: 16px;
       height: 16px;
@@ -518,41 +569,73 @@
     }
 
     /* ── Selected catalog info banner ────────────────────────────────────── */
+    /* ── Selected catalog banner ─────────────────────────────────────────── */
     .selectedCatBanner {
       display: flex;
       align-items: center;
-      gap: 14px;
-      background: rgba(0,55,100,.05);
-      border: 1.5px solid rgba(0,55,100,.15);
-      border-radius: 10px;
-      padding: 12px 16px;
+      gap: 16px;
+      background: linear-gradient(135deg, #003764 0%, #004d8a 100%);
+      border: 1px solid #003764;
+      border-radius: 12px;
+      padding: 16px 20px;
       margin-bottom: 20px;
+      box-shadow: 0 6px 18px rgba(0, 55, 100, .18);
+      color: #fff;
+    }
+
+    .selectedCatBanner .catBannerLabel {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .70);
+      margin-bottom: 4px;
     }
 
     .selectedCatBanner .catBannerName {
-      font-size: 15px;
+      font-size: 18px;
       font-weight: 700;
-      color: var(--blue);
-      flex: 1;
+      color: #fff;
+      line-height: 1.25;
     }
 
     .selectedCatBanner .catBannerMeta {
       font-size: 12px;
-      color: var(--gray);
+      color: rgba(255, 255, 255, .75);
+      margin-top: 4px;
     }
 
-    .btnClearSel {
-      background: none;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 5px 12px;
-      font: 600 12px "Rubik", sans-serif;
-      color: var(--gray);
-      cursor: pointer;
-      transition: border-color .12s, color .12s;
-      white-space: nowrap;
+    .selectedCatBanner .bannerActions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
     }
-    .btnClearSel:hover { border-color: #b91c1c; color: #b91c1c; }
+
+    .bannerBtn {
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid rgba(255, 255, 255, .35);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font: 600 12px "Rubik", sans-serif;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, border-color .15s, transform .05s;
+    }
+    .bannerBtn:hover  { background: rgba(255, 255, 255, .22); border-color: rgba(255, 255, 255, .60); }
+    .bannerBtn:active { transform: translateY(1px); }
+
+    .bannerBtn.danger {
+      background: rgba(185, 28, 28, .25);
+      border-color: rgba(254, 202, 202, .55);
+    }
+    .bannerBtn.danger:hover {
+      background: rgba(185, 28, 28, .50);
+      border-color: #fecaca;
+    }
+
+    /* Legacy — kept for any stale references, not used anymore */
+    .btnClearSel { display: none; }
 
     /* ── Change note textarea ─────────────────────────────────────────────── */
     #uChangeNote { min-height: 60px; resize: vertical; }
@@ -562,6 +645,108 @@
       display: flex;
       justify-content: flex-end;
       margin-top: 24px;
+    }
+
+    /* ── Delete wizard (slider drag-to-confirm) ───────────────────────────── */
+    .deleteWizardBox {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .deleteWizardHeading {
+      font-size: 15px;
+      font-weight: 700;
+      color: #b91c1c;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .deleteWizardBody {
+      font-size: 14px;
+      color: #111827;
+      line-height: 1.55;
+    }
+    .deleteWizardBody code {
+      background: #f3f4f6;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .deleteWizardBody ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    /* Drag-to-confirm slider */
+    .dragConfirm {
+      position: relative;
+      height: 52px;
+      border-radius: 26px;
+      background: linear-gradient(90deg, #fee2e2 0%, #fecaca 100%);
+      border: 1.5px solid #fca5a5;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    .dragConfirm.completed {
+      background: linear-gradient(90deg, #fee2e2 0%, #b91c1c 100%);
+      border-color: #b91c1c;
+    }
+    .dragConfirmFill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 0;
+      background: linear-gradient(90deg, rgba(185, 28, 28, .15) 0%, rgba(185, 28, 28, .40) 100%);
+      pointer-events: none;
+      transition: none;
+    }
+    .dragConfirmTrack {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .dragConfirmLabel {
+      font-size: 13px;
+      font-weight: 700;
+      color: #b91c1c;
+      letter-spacing: .02em;
+      text-align: center;
+      padding: 0 60px 0 60px;
+      line-height: 1.3;
+      transition: opacity .15s;
+    }
+    .dragConfirmHandle {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 44px;
+      height: 44px;
+      border-radius: 22px;
+      background: #b91c1c;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: grab;
+      box-shadow: 0 3px 8px rgba(185, 28, 28, .40);
+      transition: background .12s;
+      will-change: transform;
+    }
+    .dragConfirmHandle:hover   { background: #991b1b; }
+    .dragConfirmHandle:active  { cursor: grabbing; }
+    .dragConfirm.completed .dragConfirmHandle {
+      background: #15803d;
+      box-shadow: 0 3px 8px rgba(21, 128, 61, .40);
+    }
+    .dragConfirm.animating .dragConfirmHandle {
+      transition: transform .25s ease-out;
     }
 
     /* ── Change log display ───────────────────────────────────────────────── */
@@ -589,6 +774,8 @@
     .clNote { color: var(--gray); font-style: italic; }
     .clEmpty { padding: 16px; color: var(--gray2); font-size: 13px; text-align: center; }
   </style>
+  <script src="user-badge.js"></script>
+  <script src="toast.js"></script>
 </head>
 
 <body>
@@ -608,6 +795,8 @@
       <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
     </nav>
 
+    <div class="navDivider"></div>
+    <div class="userBadge" id="userBadge" style="display:none"></div>
     <div class="navDivider"></div>
     <button class="clientBtn btn-signout" id="btnLogout" type="button">Sign out</button>
   </header>
@@ -785,11 +974,15 @@
 
         <!-- Banner -->
         <div class="selectedCatBanner">
-          <div style="flex:1">
+          <div style="flex:1; min-width: 0;">
+            <div class="catBannerLabel">Catalog currently selected</div>
             <div class="catBannerName" id="uBannerName"></div>
             <div class="catBannerMeta" id="uBannerMeta"></div>
           </div>
-          <button class="btnClearSel" id="btnClearCatSel" type="button">Change catalog</button>
+          <div class="bannerActions">
+            <button class="bannerBtn"        id="btnArchiveCatalog" type="button">Archive</button>
+            <button class="bannerBtn danger" id="btnDeleteCatalog"  type="button" style="display:none;">Delete</button>
+          </div>
         </div>
 
         <!-- Editable fields -->
@@ -849,6 +1042,47 @@
           </div>
         </div>
 
+        <!-- Associate Vehicles -->
+        <div class="cmCard">
+          <div class="cmSectionTitle">Associate Vehicles</div>
+          <div class="vehiclesNote">
+            Select the vehicles to associate with this catalog. Already-associated vehicles appear highlighted —
+            click the <strong>🔒</strong> icon to unlock a row before un-associating.
+            If the vehicle you are looking for is not listed,
+            please <a href="vehicle-registry.html">register it in the system</a> first.
+          </div>
+
+          <div class="vehicleFilters">
+            <input type="text" id="uFilterPep2"      placeholder="Filter PEP code…" />
+            <input type="text" id="uFilterBusNo2"    placeholder="Filter Bus No…" />
+            <input type="text" id="uFilterCustomer2" placeholder="Filter customer…" />
+            <input type="text" id="uFilterVin2"      placeholder="Filter VIN…" />
+          </div>
+
+          <div class="selectAllRow">
+            <input type="checkbox" id="uChkSelectAll" />
+            <label for="uChkSelectAll">Select / deselect all visible (unlocked only)</label>
+            <span id="uSelectedCount" style="margin-left:auto; color:var(--blue); font-weight:700;"></span>
+          </div>
+
+          <div class="vehicleTableWrap">
+            <table class="vehicleTable" id="uVehicleTable">
+              <thead>
+                <tr>
+                  <th style="width:72px;"></th>
+                  <th data-col="pep_code">PEP Code <span class="sortArrow">↕</span></th>
+                  <th data-col="cobus_bus_no">Cobus Bus No. <span class="sortArrow">↕</span></th>
+                  <th data-col="customer">Customer <span class="sortArrow">↕</span></th>
+                  <th data-col="vin">VIN <span class="sortArrow">↕</span></th>
+                </tr>
+              </thead>
+              <tbody id="uVehicleTbody">
+                <tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">Loading vehicles…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Change note -->
         <div class="cmCard">
           <div class="cmSectionTitle">Change Note</div>
@@ -880,7 +1114,7 @@
   <div class="cmModalOverlay" id="confirmModal" style="display:none;">
     <div class="cmModalBackdrop"></div>
     <div class="cmModalBox">
-      <div class="cmModalTitle">Confirm Catalog Submission</div>
+      <div class="cmModalTitle" id="confirmModalTitle">Confirm Catalog Submission</div>
       <div class="cmModalBody" id="confirmModalBody"></div>
       <div class="cmModalFooter">
         <button class="btn" id="btnConfirmCancel" type="button">Cancel</button>
@@ -915,7 +1149,7 @@
       const listEl = document.getElementById('catalogPickerList');
       listEl.innerHTML = '<div class="catPickerLoading">Loading…</div>';
       const isDraftVisible = ['admin','catalog_manager'].includes(role);
-      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft'] : ['published']).order('name');
+      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft','archived'] : ['published']).order('name');
       if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
       const showStatus = isDraftVisible;
       const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;
@@ -963,7 +1197,7 @@
 
       const { data: prof } = await window.sb
         .from("profiles")
-        .select("role, status, requested_full_name")
+        .select("role, status, requested_full_name, customer_id")
         .eq("user_id", session.user.id)
         .maybeSingle();
 
@@ -973,6 +1207,8 @@
       }
 
       setupNavTabs(prof.role, "catalogmgr");
+      window.renderUserBadge?.(session, prof);
+      window.__userRole = prof.role;
 
       window.revealPage();
 
@@ -986,5 +1222,7 @@
       document.body.appendChild(logout);
     })();
   </script>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

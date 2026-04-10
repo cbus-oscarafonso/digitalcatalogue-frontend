@@ -208,7 +208,8 @@
       text-decoration: none;
     }
 
-    /* ── Toast ── */
+    /* ── Toast ── Inline to avoid race with async styles.css.
+       Classes kept in sync with styles.css .toast rules. */
     #toast {
       position: fixed;
       bottom: 32px;
@@ -221,15 +222,16 @@
       opacity: 0;
       transition: opacity 0.3s ease;
       pointer-events: none;
-      z-index: 999;
+      z-index: 9999;
       text-align: center;
-      max-width: 340px;
+      max-width: 400px;
       white-space: pre-line;
     }
 
-    #toast.show      { opacity: 1; }
-    #toast.toast-ok  { background: #003764; color: #fff; }
-    #toast.toast-err { background: #b91c1c; color: #fff; }
+    #toast.show             { opacity: 1; }
+    #toast.toast--ok        { background: #003764; color: #fff; }
+    #toast.toast--err       { background: #b91c1c; color: #fff; }
+    #toast.toast--info      { background: #374151; color: #fff; }
 
     /* ── Success screen ── */
     #successScreen {
@@ -246,6 +248,8 @@
       margin: 0 0 20px;
     }
   </style>
+
+  <script src="toast.js"></script>
 </head>
 
 <body>
@@ -336,13 +340,12 @@
     </div>
   </div>
 
-  <div id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
     const sb = window.sb;
     const $ = (id) => document.getElementById(id);
 
-    let toastTimer = null;
     let activeTab  = "client"; // "client" | "internal"
     let userEmail  = "";
 
@@ -359,14 +362,7 @@
       customer:        'Customer',
     };
 
-    // ── Toast ────────────────────────────────────────────────
-    function showToast(text, ok = true) {
-      const t = $("toast");
-      t.textContent = text;
-      t.className = ok ? "show toast-ok" : "show toast-err";
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => t.classList.remove("show"), 4500);
-    }
+    // toast() / toast.success() / toast.error() provided globally by toast.js.
 
     // ── Tab switching ────────────────────────────────────────
     function setTab(tab) {
@@ -425,7 +421,7 @@
     // ── Init: validate token & prefill email ─────────────────
     async function init() {
       if (!sb) {
-        showToast("Supabase client missing. Check supabase-client.js.", false);
+        toast.error("Supabase client missing. Check supabase-client.js.");
         return;
       }
 
@@ -497,19 +493,19 @@
 
     // ── Create Account ───────────────────────────────────────
     $("btnCreate").addEventListener("click", async () => {
-      if (!sb) { showToast("Supabase client missing.", false); return; }
+      if (!sb) { toast.error("Supabase client missing."); return; }
 
       const password        = $("password").value;
       const confirmPassword = $("confirmPassword").value;
 
       if (!password) {
-        showToast("Please choose a password.", false); return;
+        toast.error("Please choose a password."); return;
       }
       if (password.length < 8) {
-        showToast("Password must be at least 8 characters.", false); return;
+        toast.error("Password must be at least 8 characters."); return;
       }
       if (password !== confirmPassword) {
-        showToast("Passwords do not match.", false); return;
+        toast.error("Passwords do not match."); return;
       }
 
       const btn = $("btnCreate");
@@ -520,7 +516,7 @@
         // ── Step 1: Set the password ──────────────────────────
         const { error: pwErr } = await sb.auth.updateUser({ password });
         if (pwErr) {
-          showToast("Error setting password: " + pwErr.message, false);
+          toast.error("Error setting password: " + pwErr.message);
           btn.disabled    = false;
           btn.textContent = "Create Account";
           return;
@@ -531,7 +527,7 @@
         const userId = sessionData?.session?.user?.id;
 
         if (!userId) {
-          showToast("Session error. Please try opening the link again.", false);
+          toast.error("Session error. Please try opening the link again.");
           btn.disabled    = false;
           btn.textContent = "Create Account";
           return;
@@ -541,7 +537,7 @@
         if (preAssignedRole) {
           const fullName = ($("preAssignedFullName").value || "").trim();
           if (!fullName) {
-            showToast("Please enter your full name.", false);
+            toast.error("Please enter your full name.");
             btn.disabled    = false;
             btn.textContent = "Create Account";
             return;
@@ -556,7 +552,7 @@
           });
 
           if (activateErr) {
-            showToast("Error activating account: " + activateErr.message, false);
+            toast.error("Error activating account: " + activateErr.message);
             btn.disabled    = false;
             btn.textContent = "Create Account";
             return;
@@ -582,13 +578,13 @@
         const role     = isClient ? "customer" : $("internalRole").value;
 
         if (!fullName) {
-          showToast("Please enter your full name.", false);
+          toast.error("Please enter your full name.");
           btn.disabled    = false;
           btn.textContent = "Create Account";
           return;
         }
         if (isClient && !company) {
-          showToast("Please enter your company name.", false);
+          toast.error("Please enter your company name.");
           btn.disabled    = false;
           btn.textContent = "Create Account";
           return;
@@ -606,7 +602,7 @@
           .eq("user_id", userId);
 
         if (profileErr) {
-          showToast("Error saving profile: " + profileErr.message, false);
+          toast.error("Error saving profile: " + profileErr.message);
           btn.disabled    = false;
           btn.textContent = "Create Account";
           return;
@@ -628,7 +624,7 @@
         $("successScreen").style.display = "block";
 
       } catch (err) {
-        showToast("Unexpected error: " + err.message, false);
+        toast.error("Unexpected error: " + err.message);
         btn.disabled    = false;
         btn.textContent = "Create Account";
       }

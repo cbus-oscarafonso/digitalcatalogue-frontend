@@ -16,14 +16,7 @@
   const sortIndicator = $("sortIndicator");
   const whoEl = $("whoami");
 
-  let toastTimer = null;
-  function showToast(text, ok = true) {
-    const t = $("toast");
-    t.textContent = text;
-    t.className = ok ? "show toast-ok" : "show toast-err";
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove("show"), 4000);
-  }
+  // toast() / toast.error() / toast.success() provided globally by toast.js.
 
   // ── User-exists modal ─────────────────────────────────────────────────────
 
@@ -472,7 +465,7 @@
     customerNotesPending.value   = "";
     pendingCountryPicker.clear();
     setPendingModeUI();
-    showToast("Pending approval choice cleared.", true);
+    toast.success("Pending approval choice cleared.");
   }
 
   // ── Invite panel UI mode ──────────────────────────────────────────────────
@@ -540,7 +533,7 @@
     btnEditExistingCustomerNotes.textContent = "Edit notes";
     btnCancelExistingCustomerNotes.classList.add("hidden");
 
-    showToast("Standalone customer form cleared.", true);
+    toast.success("Standalone customer form cleared.");
   }
 
   // ── Data loaders ─────────────────────────────────────────────────────────
@@ -553,7 +546,7 @@
 
     if (error) {
       console.error("loadCountries error:", error);
-      showToast("Failed to load countries: " + error.message, false);
+      toast.error("Failed to load countries: " + error.message);
       return;
     }
     countriesData = data || [];
@@ -570,7 +563,7 @@
 
     if (error) {
       console.error("loadCustomers error:", error);
-      showToast("Failed to load customers: " + error.message, false);
+      toast.error("Failed to load customers: " + error.message);
       return;
     }
     customersData = data || [];
@@ -610,7 +603,7 @@
     if (error) {
       console.error("loadPending error:", error);
       pendingTbody.innerHTML = `<tr><td colspan="5">Failed to load pending users: ${esc(error.message)}</td></tr>`;
-      showToast("Failed to load pending users: " + error.message, false);
+      toast.error("Failed to load pending users: " + error.message);
       return;
     }
 
@@ -665,7 +658,7 @@
     if (error) {
       console.error("loadPendingInternal error:", error);
       pendingInternalTbody.innerHTML = `<tr><td colspan="5">Failed to load pending internal users: ${esc(error.message)}</td></tr>`;
-      showToast("Failed to load pending internal users: " + error.message, false);
+      toast.error("Failed to load pending internal users: " + error.message);
       return;
     }
 
@@ -932,7 +925,7 @@
     selectedExistingStandaloneCustomer.notes = newNotes;
     await loadCustomers();
     setExistingStandaloneNotesEditMode(false);
-    showToast("Customer notes saved.", true);
+    toast.success("Customer notes saved.");
   }
 
   function cancelExistingStandaloneCustomerNotesEdit() {
@@ -968,7 +961,7 @@
         customerName = cust ? cust.name : "";
       } else {
         // Create new customer first, then invite
-        showToast("Creating customer…", true);
+        toast.success("Creating customer…");
         customerId   = await createCustomerRecord({
           name:        newName,
           countryCode: inviteCountryPicker.getSelectedCode(),
@@ -979,7 +972,7 @@
       }
     }
 
-    showToast("Sending invitation…", true);
+    toast.success("Sending invitation…");
 
     const redirectTo = `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/accept-invite.html`;
 
@@ -1012,7 +1005,7 @@
       throw new Error(data.error);
     }
 
-    showToast(`Invitation sent to ${email}.`, true);
+    toast.success(`Invitation sent to ${email}.`);
     clearInvite();
 
     // Refresh tables so any new pending row appears
@@ -1033,7 +1026,7 @@
 
   const { data: myProf, error: myProfErr } = await sb
     .from("profiles")
-    .select("role,status")
+    .select("role, status, requested_full_name, customer_id")
     .eq("user_id", myUserId)
     .maybeSingle();
 
@@ -1048,6 +1041,7 @@
   else document.documentElement.style.visibility = "visible";
 
   if (typeof setupNavTabs === "function") setupNavTabs(myProf.role, "adminarea");
+  window.renderUserBadge?.(session, myProf);
 
   if (myProf.role === "catalog_manager") {
     document.querySelectorAll(".adminPanel[data-panel-pending], .adminPanel[data-panel-active]")
@@ -1069,7 +1063,7 @@
   // ── Event listeners ──────────────────────────────────────────────────────
 
   on("btnRefresh", "click", async () => {
-    showToast("Refreshing…", true);
+    toast.success("Refreshing…");
     await loadCustomers();
     await loadCountries();
     await loadPending();
@@ -1121,18 +1115,18 @@
   on(inviteNewCustomerName, "blur", () => {
     const name = inviteNewCustomerName.value.trim();
     if (name.length >= 3 && checkCustomerDuplicate(name)) {
-      showToast("Warning: a customer with this name already exists.", false);
+      toast.error("Warning: a customer with this name already exists.");
     }
   });
 
   on("btnClearInviteCustomer", "click", () => {
     clearInviteCustomer();
-    showToast("Customer choice cleared.", true);
+    toast.success("Customer choice cleared.");
   });
 
   on("btnClearInvite", "click", () => {
     clearInvite();
-    showToast("Invite form cleared.", true);
+    toast.success("Invite form cleared.");
   });
 
   on("btnSendInvite", "click", async () => {
@@ -1142,7 +1136,7 @@
       await sendInvite();
     } catch (err) {
       console.error(err);
-      showToast(String(err?.message || err), false);
+      toast.error(String(err?.message || err));
     } finally {
       btn.disabled = false;
     }
@@ -1160,7 +1154,7 @@
 
   on("btnCreateStandaloneCustomer", "click", async () => {
     try {
-      showToast("Creating customer…", true);
+      toast.success("Creating customer…");
       await createCustomerRecord({
         name:        newCustomerNameStandalone.value.trim(),
         countryCode: standaloneCountryPicker.getSelectedCode(),
@@ -1169,33 +1163,33 @@
       await loadCustomers();
       await loadActiveUsers();
       clearStandaloneCreate();
-      showToast("Customer created.", true);
+      toast.success("Customer created.");
     } catch (err) {
       console.error(err);
-      showToast(String(err?.message || err), false);
+      toast.error(String(err?.message || err));
     }
   });
 
   on(btnEditExistingCustomerNotes, "click", async () => {
     try {
       if (!selectedExistingStandaloneCustomer?.id) {
-        showToast("Select an existing customer first.", false);
+        toast.error("Select an existing customer first.");
         return;
       }
 
       if (!existingStandaloneNotesEditMode) {
         existingStandaloneOriginalNotes = existingCustomerNotesStandalone.value || "";
         setExistingStandaloneNotesEditMode(true);
-        showToast("Editing notes…", true);
+        toast.success("Editing notes…");
         existingCustomerNotesStandalone.focus();
         return;
       }
 
-      showToast("Saving notes…", true);
+      toast.success("Saving notes…");
       await saveExistingStandaloneCustomerNotes();
     } catch (err) {
       console.error(err);
-      showToast(String(err?.message || err), false);
+      toast.error(String(err?.message || err));
     }
   });
 
@@ -1210,13 +1204,13 @@
   on(newCustomerNameStandalone, "input", () => {
     const name = newCustomerNameStandalone.value.trim();
     if (!name) return;
-    if (checkCustomerDuplicate(name)) showToast("Warning: a customer with this name already exists.", false);
+    if (checkCustomerDuplicate(name)) toast.error("Warning: a customer with this name already exists.");
   });
 
   on(newCustomerNameStandalone, "blur", async () => {
     const name = newCustomerNameStandalone.value.trim();
     if (!name || name.length < 3) return;
-    if (checkCustomerDuplicate(name)) showToast("Warning: a customer with this name already exists.", false);
+    if (checkCustomerDuplicate(name)) toast.error("Warning: a customer with this name already exists.");
   });
 
   // Click handler for pending client users table (delegated)
@@ -1230,23 +1224,23 @@
     const action = btn.getAttribute("data-action");
 
     try {
-      showToast("Working…", true);
+      toast.success("Working…");
 
       if (action === "approve") {
         await approveClientUser(userId);
-        showToast("Approved.", true);
+        toast.success("Approved.");
         await loadCustomers();
         await loadActiveUsers();
         clearPendingChoice();
       } else if (action === "reject") {
         await rejectUser(userId);
-        showToast("Rejected.", true);
+        toast.success("Rejected.");
       }
 
       await loadPending();
     } catch (err) {
       console.error(err);
-      showToast(String(err?.message || err), false);
+      toast.error(String(err?.message || err));
     }
   });
 
@@ -1260,23 +1254,23 @@
     const action = btn.getAttribute("data-action");
 
     try {
-      showToast("Working…", true);
+      toast.success("Working…");
 
       if (action === "approve") {
         const roleSelect = tr.querySelector(`.roleSelectInline[data-user-id="${userId}"]`);
         const role = roleSelect ? roleSelect.value : "internal";
         await approveInternalUser(userId, role);
-        showToast("Approved.", true);
+        toast.success("Approved.");
       } else if (action === "reject") {
         await rejectUser(userId);
-        showToast("Rejected.", true);
+        toast.success("Rejected.");
       }
 
       await loadPendingInternal();
       await loadActiveUsers();
     } catch (err) {
       console.error(err);
-      showToast(String(err?.message || err), false);
+      toast.error(String(err?.message || err));
     }
   });
 
@@ -1388,7 +1382,7 @@
     if (!file) return;
     const text = await file.text();
     const rows = parseCsv(text);
-    if (!rows.length) { showToast("No data found in CSV.", false); return; }
+    if (!rows.length) { toast.error("No data found in CSV."); return; }
 
     $("vehiclesInputTbody").innerHTML = "";
     rows.forEach(r => addVehicleInputRow(r));
@@ -1460,7 +1454,7 @@
   on("btnAddVehiclesToDb", "click", () => {
     const rows = getVehicleInputRows();
     const valid = rows.filter(r => r.pep_code || r.vin || r.model);
-    if (!valid.length) { showToast("No vehicles to add.", false); return; }
+    if (!valid.length) { toast.error("No vehicles to add."); return; }
     $("vehicleConfirmMessage").textContent = `Add ${valid.length} new vehicle${valid.length > 1 ? "s" : ""} to the database?`;
     $("vehicleConfirmModal").hidden = false;
   });
@@ -1476,18 +1470,18 @@
     try {
       const { error } = await sb.from("vehicles").insert(rows);
       if (error) throw new Error(error.message);
-      showToast(`${rows.length} vehicle${rows.length > 1 ? "s" : ""} added.`, true);
+      toast.success(`${rows.length} vehicle${rows.length > 1 ? "s" : ""} added.`);
       clearVehicleInputTable();
       await loadVehicles();
     } catch (err) {
-      showToast(String(err?.message || err), false);
+      toast.error(String(err?.message || err));
     } finally {
       btn.disabled = false;
     }
   });
 
   on("btnAddVehicleRow",  "click", () => addVehicleInputRow());
-  on("btnClearVehicles",  "click", () => { clearVehicleInputTable(); showToast("Cleared.", true); });
+  on("btnClearVehicles",  "click", () => { clearVehicleInputTable(); toast.success("Cleared."); });
 
   // ── Init ─────────────────────────────────────────────────────────────────
 

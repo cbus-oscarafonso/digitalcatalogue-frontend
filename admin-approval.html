@@ -508,6 +508,8 @@
       }
     }
   </style>
+  <script src="user-badge.js"></script>
+  <script src="toast.js"></script>
 </head>
 
 <body>
@@ -527,6 +529,8 @@
 
     <div class="navDivider"></div>
     <span id="whoami" style="display:none"></span>
+    <div class="userBadge" id="userBadge" style="display:none"></div>
+    <div class="navDivider"></div>
     <button class="clientBtn btn-signout" id="btnLogout" type="button">Sign out</button>
   </header>
 
@@ -990,30 +994,7 @@
     </section>
   </main>
 
-  <div id="toast"></div>
-
-  <style>
-    #toast {
-      position: fixed;
-      bottom: 32px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 14px 24px;
-      border-radius: 10px;
-      font: 600 14px "Rubik", sans-serif;
-      box-shadow: 0 8px 24px rgba(0,0,0,.18);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-      z-index: 9999;
-      text-align: center;
-      max-width: 400px;
-      white-space: pre-line;
-    }
-    #toast.show     { opacity: 1; }
-    #toast.toast-ok  { background: #003764; color: #fff; }
-    #toast.toast-err { background: #b91c1c; color: #fff; }
-  </style>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
     function _escHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
@@ -1029,7 +1010,7 @@
       const listEl = document.getElementById('catalogPickerList');
       listEl.innerHTML = '<div class="catPickerLoading">Loading…</div>';
       const isDraftVisible = ['admin','catalog_manager'].includes(role);
-      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft'] : ['published']).order('name');
+      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft','archived'] : ['published']).order('name');
       if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
       const showStatus = isDraftVisible;
       const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;

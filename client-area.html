@@ -277,6 +277,9 @@
   <script src="supabase-client.js"></script>
   <!-- Auth guard -->
   <script src="auth-guard.js"></script>
+  <!-- User badge (shared) -->
+  <script src="user-badge.js"></script>
+  <script src="toast.js"></script>
 </head>
 
 <body>
@@ -301,6 +304,8 @@
       <span class="cartBtnBadge" id="cartBtnBadge" style="display:none"></span>
     </button>
 
+    <div class="navDivider"></div>
+    <div class="userBadge" id="userBadge" style="display:none"></div>
     <div class="navDivider"></div>
     <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">Sign out</button>
   </header>
@@ -396,7 +401,7 @@
       try {
         const { data: prof } = await window.sb
           .from("profiles")
-          .select("role")
+          .select("role, requested_full_name, customer_id")
           .eq("user_id", session.user.id)
           .maybeSingle();
 
@@ -404,6 +409,7 @@
         window.__userRole = role;
 
         setupNavTabs(role, "clientarea");
+        window.renderUserBadge?.(session, prof);
 
         if (role === 'customer') {
           const btnCart = document.getElementById('btnCart');
@@ -498,6 +504,8 @@
       </div>
     </div>
   </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 </body>
 
