@@ -4,7 +4,13 @@
   <meta charset="utf-8" />
   <title>Redirect</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js"></script>
+  <script>
+    window.sb = window.supabase.createClient(
+      "https://ytwwcrhtcsdpqeualnsx.supabase.co",
+      "sb_publishable_QdZJOKCMMhOa9Xgb1ab-ew_ZJFeVncA",
+      { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+    );
+  </script>
 </head>
 <body>
   <script>
