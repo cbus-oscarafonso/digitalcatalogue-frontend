@@ -534,7 +534,7 @@
     .editInput, .editSelect {
       padding: 5px 8px; border: 1.5px solid #003764; border-radius: 7px;
       font: 500 13px "Rubik", system-ui, sans-serif;
-      width: 100%; box-sizing: border-box; background: #fff;
+      width: 100%; min-width: 80px; box-sizing: border-box; background: #fff;
     }
     .editInput:focus, .editSelect:focus {
       outline: none; box-shadow: 0 0 0 3px rgba(0,55,100,.12);
@@ -576,7 +576,8 @@
     .pendingSubLabel {
       font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; color: #6b7280;
-      padding: 14px 14px 6px;
+      padding: 6px 14px 6px;
+      background-color: #ebebeb;
     }
     .pendingSubLabel + .adminTableWrap { border-top: 1px solid var(--line, #e5e7eb); }
     .pendingSubLabel:not(:first-child) { border-top: 1px solid var(--line, #e5e7eb); margin-top: 8px; }
@@ -626,26 +627,6 @@
 
     /* ── Caps for static th ── */
     th { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem !important; }
-
-    /* ── Edit mode row highlight ── */
-    .editingRow { background: #fffbeb !important; }
-    .editingRow td { color: #92400e !important; }
-
-    /* ── Clickable data rows ── */
-    .dataRow { cursor: pointer; }
-    .dataRow:hover { background: var(--row-hover, #f1f5f9); }
-    .dataRow.expanded { background: #eff6ff; }
-    .dataRow.expanded td { color: var(--blue, #003764); }
-
-    /* ── Vehicle detail popup ── */
-    #vehicleDetailPopup .modalPanel { height: auto; max-width: 380px; }
-    #vehicleDetailPopup .modalFooter { border-top: none; }
-    .vehicleDetailTable { width: 100%; border-collapse: collapse; }
-    .vehicleDetailTable td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-    .vehicleDetailTable td:first-child { font-weight: 600; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; width: 120px; }
-    .vehicleDetailTable tr:last-child td { border-bottom: none; }
-    .pepChip { display: inline-block; padding: 2px 8px; border-radius: 6px; background: #e0e7ef; color: #003764; font-size: 11px; font-weight: 700; cursor: pointer; margin: 2px; transition: background 0.12s; }
-    .pepChip:hover { background: #bfdbfe; }
   </style>
   <script src="user-badge.js"></script>
   <script src="toast.js"></script>
@@ -910,7 +891,7 @@
               <th class="adminSortTh" data-table="users" data-key="created_at">Created <span class="adminSortArrow inactive">↕</span></th>
               <th class="adminSortTh" data-table="users" data-key="approved_at">Approved <span class="adminSortArrow inactive">↓</span></th>
               <th>User ID</th>
-              <th id="activeUsersEditColHeader" style="display:none"></th>
+              <th id="activeUsersEditColHeader" style="display:none">Edit</th>
             </tr>
           </thead>
           <tbody id="activeTbody">
@@ -936,7 +917,7 @@
               <th class="adminSortTh" data-table="vehicles" data-key="cobus_bus_no">Bus No. <span class="adminSortArrow inactive">↕</span></th>
               <th class="adminSortTh" data-table="vehicles" data-key="motor_no">Motor No. <span class="adminSortArrow inactive">↕</span></th>
               <th class="adminSortTh" data-table="vehicles" data-key="customer_name">Customer <span class="adminSortArrow inactive">↕</span></th>
-              <th id="vehiclesEditColHeader" style="display:none"></th>
+              <th id="vehiclesEditColHeader" style="display:none">Edit</th>
             </tr>
           </thead>
           <tbody id="vehiclesTbody">
@@ -1081,7 +1062,7 @@
               <th class="adminSortTh" data-table="customers" data-key="code">Code <span class="adminSortArrow inactive">↕</span></th>
               <th class="adminSortTh" data-table="customers" data-key="country">Country <span class="adminSortArrow inactive">↕</span></th>
               <th>Notes</th>
-              <th id="customersEditColHeader" style="display:none"></th>
+              <th id="customersEditColHeader" style="display:none">Edit</th>
             </tr>
           </thead>
           <tbody id="customersTbody">
@@ -1176,22 +1157,6 @@
       </div>
       <div class="modalFooter">
         <button class="btn primary" id="btnUserExistsDismiss" type="button">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Vehicle detail popup ── -->
-  <div id="vehicleDetailPopup" class="modalOverlay" hidden>
-    <div class="modalBackdrop" id="vehicleDetailPopupBackdrop"></div>
-    <div class="modalPanel" role="dialog" aria-modal="true">
-      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
-        <div class="panelTitle" style="color:#fff;" id="vehicleDetailPopupTitle">Vehicle</div>
-      </div>
-      <div class="modalBody" style="padding:0;">
-        <table class="vehicleDetailTable" id="vehicleDetailTable"></table>
-      </div>
-      <div class="modalFooter" style="border-top:none;">
-        <button class="btn primary" id="btnVehicleDetailClose" type="button">Close</button>
       </div>
     </div>
   </div>

@@ -1127,7 +1127,7 @@
           `<option value="${esc(c.id)}" ${c.id === customerVal ? "selected" : ""}>${esc(c.name)}</option>`
         ).join("");
 
-        return `<tr class="editingRow" data-user-id="${esc(u.user_id)}">
+        return `<tr data-user-id="${esc(u.user_id)}">
           <td><input class="editInput" data-type="users" data-id="${esc(u.user_id)}" data-field="requested_full_name" data-orig="${esc(u.display_name)}" value="${esc(nameVal)}"></td>
           <td>${esc(u.email)}</td>
           <td><select class="editSelect" data-type="users" data-id="${esc(u.user_id)}" data-field="role" data-orig="${esc(u.role)}">${roleOpts}</select></td>
@@ -1139,7 +1139,7 @@
         </tr>`;
       }
 
-      return `<tr class="dataRow" data-user-id="${esc(u.user_id)}">
+      return `<tr data-user-id="${esc(u.user_id)}">
         <td><strong>${esc(nameVal)}</strong></td>
         <td>${esc(u.email)}</td>
         <td>${esc(ROLE_LABELS[roleVal] || roleVal)}</td>
@@ -1222,10 +1222,10 @@
         const editCells = fields.map(f => {
           const orig = v[f];
           const val  = changes[f]?.new ?? orig;
-          return `<td><input class="editInput" data-type="vehicles" data-id="${esc(v.id)}" data-field="${f}" data-orig="${esc(String(orig))}" value="${esc(String(val ?? ""))}"></td>`;
+          return `<td><input class="editInput" style="min-width:70px;" data-type="vehicles" data-id="${esc(v.id)}" data-field="${f}" data-orig="${esc(String(orig))}" value="${esc(String(val ?? ""))}"></td>`;
         }).join("");
 
-        return `<tr class="editingRow" data-vehicle-id="${esc(v.id)}">
+        return `<tr data-vehicle-id="${esc(v.id)}">
           ${editCells}
           <td><select class="editSelect" data-type="vehicles" data-id="${esc(v.id)}" data-field="customer_id" data-orig="${esc(v.customer_id)}">${custOpts}</select></td>
           <td><label class="toggleSwitch" title="Stop editing"><input type="checkbox" data-toggle-type="vehicles" data-toggle-id="${esc(v.id)}" checked><span class="toggleSlider"></span></label></td>
@@ -1236,7 +1236,7 @@
         ? (customersData.find(c => c.id === changes.customer_id.new)?.name || "—")
         : v.customer_name;
 
-      return `<tr class="dataRow" data-vehicle-id="${esc(v.id)}">
+      return `<tr data-vehicle-id="${esc(v.id)}">
         <td class="mono">${esc(changes.pep_code?.new ?? v.pep_code)}</td>
         <td>${esc(changes.model?.new ?? v.model)}</td>
         <td>${esc(changes.production_year?.new ?? v.production_year)}</td>
@@ -1282,7 +1282,7 @@
         return `<tr class="customerRow" data-customer-id="${esc(c.id)}">
           <td><input class="editInput" data-type="customers" data-id="${esc(c.id)}" data-field="name" data-orig="${esc(c.name)}" value="${esc(changes.name?.new ?? c.name)}"></td>
           <td class="mono small">${esc(c.code)}</td>
-          <td><input class="editInput" data-type="customers" data-id="${esc(c.id)}" data-field="country" data-orig="${esc(c.country||"")}" value="${esc(changes.country?.new ?? (c.country||""))}"></td>
+          <td><input class="editInput" style="min-width:60px;" data-type="customers" data-id="${esc(c.id)}" data-field="country" data-orig="${esc(c.country||"")}" value="${esc(changes.country?.new ?? (c.country||""))}"></td>
           <td><input class="editInput" data-type="customers" data-id="${esc(c.id)}" data-field="notes" data-orig="${esc(c.notes||"")}" value="${esc(changes.notes?.new ?? (c.notes||""))}"></td>
           <td><label class="toggleSwitch" title="Stop editing"><input type="checkbox" data-toggle-type="customers" data-toggle-id="${esc(c.id)}" checked><span class="toggleSlider"></span></label></td>
         </tr>`;
@@ -1732,135 +1732,13 @@
   on('btnOrderReqPopupClose', 'click', () => { $('orderReqPopup').hidden = true; });
   on('orderReqPopupBackdrop', 'click', () => { $('orderReqPopup').hidden = true; });
 
-  on('orderReqPopupBackdrop', 'click', () => { $('orderReqPopup').hidden = true; });
-
-  // ── User row expansion ────────────────────────────────────────────────────
-  const expandedUsers = new Set();
-
-  async function toggleUserExpanded(userId, tr) {
-    const existingExpanded = tr.nextElementSibling;
-    if (existingExpanded?.classList.contains('userExpandedRow')) {
-      existingExpanded.remove();
-      tr.classList.remove('expanded');
-      expandedUsers.delete(userId);
-      return;
-    }
-    tr.classList.add('expanded');
-    expandedUsers.add(userId);
-    const colCount = tr.querySelectorAll('td').length;
-    const expandedTr = document.createElement('tr');
-    expandedTr.className = 'userExpandedRow';
-    expandedTr.innerHTML = `<td colspan="${colCount}" style="padding:0;background:#f8fafc;border-bottom:1px solid var(--line)"><div class="customerExpandedInner"><div class="expandLoading">Loading…</div></div></td>`;
-    tr.after(expandedTr);
-
-    try {
-      const u = activeUsersData.find(x => x.user_id === userId);
-      const customerId = u?.raw_customer_id;
-      if (!customerId) {
-        expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#9ca3af;font-size:12px;">No customer assigned to this user.</div>`;
-        return;
-      }
-      const { data: vehicles } = await sb.from('vehicles').select('id,pep_code,model,production_year,vin,cobus_bus_no,motor_no').eq('customer_id', customerId);
-      const vehicleIds = (vehicles || []).map(v => v.id);
-      const vehicleMap = new Map((vehicles || []).map(v => [v.id, v]));
-      let catalogMap = new Map();
-      let vehiclesByCatalog = new Map();
-      if (vehicleIds.length) {
-        const { data: vcs } = await sb.from('vehicle_catalogs').select('vehicle_id,catalog_id,catalogs(id,name,pai_code)').in('vehicle_id', vehicleIds);
-        for (const vc of (vcs || [])) {
-          if (vc.catalogs && !catalogMap.has(vc.catalog_id)) catalogMap.set(vc.catalog_id, vc.catalogs);
-          if (!vehiclesByCatalog.has(vc.catalog_id)) vehiclesByCatalog.set(vc.catalog_id, new Set());
-          vehiclesByCatalog.get(vc.catalog_id).add(vc.vehicle_id);
-        }
-      }
-      if (!catalogMap.size) {
-        expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#9ca3af;font-size:12px;">No catalogs associated with this user's customer.</div>`;
-        return;
-      }
-      let rows = '';
-      for (const [catalogId, cat] of catalogMap) {
-        const pepChips = [...(vehiclesByCatalog.get(catalogId) || [])].map(vid => {
-          const v = vehicleMap.get(vid);
-          if (!v) return '';
-          const vData = esc(JSON.stringify({pep_code:v.pep_code,model:v.model,production_year:v.production_year,vin:v.vin,cobus_bus_no:v.cobus_bus_no,motor_no:v.motor_no}));
-          return `<span class="pepChip" data-vehicle-json="${vData}" data-pep="${esc(v.pep_code)}">${esc(v.pep_code||v.id.slice(0,8))}</span>`;
-        }).join('');
-        rows += `<tr><td><strong>${esc(cat.name)}</strong><br><code style="font-size:10px;color:#6b7280">${esc(cat.pai_code)}</code><div class="catalogGoWrap" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;"><button class="catalogGoBtn" data-pai="${esc(cat.pai_code)}" data-name="${esc(cat.name)}" title="Go to catalog">→</button><div class="catalogGoBubble hidden" data-bubble-pai="${esc(cat.pai_code)}">Open catalog: ${esc(cat.name)} →</div></div></td><td>${pepChips||'<span style="color:#9ca3af;font-size:11px;">—</span>'}</td></tr>`;
-      }
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<table class="catalogOrdersTable"><colgroup><col style="width:40%"><col></colgroup><thead><tr><th>Catalog</th><th>Vehicles (PEP Code)</th></tr></thead><tbody>${rows}</tbody></table>`;
-    } catch (err) {
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#b91c1c;font-size:12px;">Error: ${esc(String(err.message||err))}</div>`;
-    }
-  }
-
-  // ── Vehicle row expansion ─────────────────────────────────────────────────
-  const expandedVehicles = new Set();
-
-  async function toggleVehicleExpanded(vehicleId, tr) {
-    const existingExpanded = tr.nextElementSibling;
-    if (existingExpanded?.classList.contains('vehicleExpandedRow')) {
-      existingExpanded.remove();
-      tr.classList.remove('expanded');
-      expandedVehicles.delete(vehicleId);
-      return;
-    }
-    tr.classList.add('expanded');
-    expandedVehicles.add(vehicleId);
-    const colCount = tr.querySelectorAll('td').length;
-    const expandedTr = document.createElement('tr');
-    expandedTr.className = 'vehicleExpandedRow';
-    expandedTr.innerHTML = `<td colspan="${colCount}" style="padding:0;background:#f8fafc;border-bottom:1px solid var(--line)"><div class="customerExpandedInner"><div class="expandLoading">Loading…</div></div></td>`;
-    tr.after(expandedTr);
-    try {
-      const { data: vcs } = await sb.from('vehicle_catalogs').select('catalog_id,catalogs(id,name,pai_code)').eq('vehicle_id', vehicleId);
-      if (!vcs?.length) {
-        expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#9ca3af;font-size:12px;">No catalogs associated with this vehicle.</div>`;
-        return;
-      }
-      const rows = vcs.map(vc => {
-        const cat = vc.catalogs;
-        if (!cat) return '';
-        return `<tr><td><strong>${esc(cat.name)}</strong><br><code style="font-size:10px;color:#6b7280">${esc(cat.pai_code)}</code></td><td><div class="catalogGoWrap" style="display:inline-flex;align-items:center;gap:4px;"><button class="catalogGoBtn" data-pai="${esc(cat.pai_code)}" data-name="${esc(cat.name)}" title="Go to catalog">→</button><div class="catalogGoBubble hidden" data-bubble-pai="${esc(cat.pai_code)}">Open catalog: ${esc(cat.name)} →</div></div></td></tr>`;
-      }).join('');
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<table class="catalogOrdersTable"><colgroup><col style="width:55%"><col></colgroup><thead><tr><th>Catalog</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-    } catch (err) {
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#b91c1c;font-size:12px;">Error: ${esc(String(err.message||err))}</div>`;
-    }
-  }
-
-  // ── Vehicle detail popup (pep chip) ───────────────────────────────────────
-  on('btnVehicleDetailClose',    'click', () => { $('vehicleDetailPopup').hidden = true; });
-  on('vehicleDetailPopupBackdrop','click', () => { $('vehicleDetailPopup').hidden = true; });
-
+  // Delegated: customer row click to expand
   document.addEventListener('click', (e) => {
-    const chip = e.target.closest('.pepChip');
-    if (!chip) return;
-    e.stopPropagation();
-    try {
-      const v = JSON.parse(chip.dataset.vehicleJson);
-      $('vehicleDetailPopupTitle').textContent = `Vehicle · ${chip.dataset.pep || '—'}`;
-      $('vehicleDetailTable').innerHTML = [
-        ['PEP Code', v.pep_code], ['Model', v.model], ['Year', v.production_year],
-        ['VIN', v.vin], ['Bus No.', v.cobus_bus_no], ['Motor No.', v.motor_no],
-      ].map(([l, val]) => `<tr><td>${esc(l)}</td><td>${esc(String(val||'—'))}</td></tr>`).join('');
-      $('vehicleDetailPopup').hidden = false;
-    } catch {}
-  });
-
-  // ── Delegated row clicks to expand ───────────────────────────────────────
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('input[data-toggle-type]') || e.target.closest('.toggleSwitch') ||
-        e.target.closest('.pepChip') || e.target.closest('.orderReqChip') ||
-        e.target.closest('.catalogGoBtn') || e.target.closest('.catalogGoBubble')) return;
-
-    const userTr = e.target.closest('tr.dataRow[data-user-id]');
-    if (userTr) { toggleUserExpanded(userTr.dataset.userId, userTr); return; }
-
-    const vehicleTr = e.target.closest('tr.dataRow[data-vehicle-id]');
-    if (vehicleTr) { toggleVehicleExpanded(vehicleTr.dataset.vehicleId, vehicleTr); return; }
-
-    const customerTr = e.target.closest('tr.customerRow[data-customer-id]');
-    if (customerTr) { toggleCustomerExpanded(customerTr.dataset.customerId, customerTr); return; }
+    const tr = e.target.closest('tr.customerRow');
+    if (!tr) return;
+    if (e.target.closest('input[data-toggle-type]') || e.target.closest('.toggleSwitch')) return;
+    const customerId = tr.dataset.customerId;
+    if (customerId) toggleCustomerExpanded(customerId, tr);
   });
 
   // ── Vehicle add-line placeholder ──────────────────────────────────────────

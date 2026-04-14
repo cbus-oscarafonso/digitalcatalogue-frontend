@@ -1127,7 +1127,7 @@
           `<option value="${esc(c.id)}" ${c.id === customerVal ? "selected" : ""}>${esc(c.name)}</option>`
         ).join("");
 
-        return `<tr class="editingRow" data-user-id="${esc(u.user_id)}">
+        return `<tr data-user-id="${esc(u.user_id)}">
           <td><input class="editInput" data-type="users" data-id="${esc(u.user_id)}" data-field="requested_full_name" data-orig="${esc(u.display_name)}" value="${esc(nameVal)}"></td>
           <td>${esc(u.email)}</td>
           <td><select class="editSelect" data-type="users" data-id="${esc(u.user_id)}" data-field="role" data-orig="${esc(u.role)}">${roleOpts}</select></td>
@@ -1135,11 +1135,11 @@
           <td class="small">${esc(formatDate(u.created_at))}</td>
           <td class="small">${esc(formatDate(u.approved_at))}${u.approver_name ? `<div class="small">${esc(u.approver_name)}</div>` : ""}</td>
           <td class="mono small">${esc(u.user_id)}</td>
-          <td><label class="toggleSwitch" title="Stop editing"><input type="checkbox" data-toggle-type="users" data-toggle-id="${esc(u.user_id)}" checked><span class="toggleSlider"></span></label></td>
+          <td><div class="editBtnWrap"><button class="editToggleBtn" data-cancel-row="users" data-id="${esc(u.user_id)}">Editing</button><button class="cancelEditBtn" data-cancel-row="users" data-id="${esc(u.user_id)}">✕</button></div></td>
         </tr>`;
       }
 
-      return `<tr class="dataRow" data-user-id="${esc(u.user_id)}">
+      return `<tr data-user-id="${esc(u.user_id)}">
         <td><strong>${esc(nameVal)}</strong></td>
         <td>${esc(u.email)}</td>
         <td>${esc(ROLE_LABELS[roleVal] || roleVal)}</td>
@@ -1147,7 +1147,7 @@
         <td class="small">${esc(formatDate(u.created_at))}</td>
         <td class="small">${esc(formatDate(u.approved_at))}${u.approver_name ? `<div class="small">${esc(u.approver_name)}</div>` : ""}</td>
         <td class="mono small">${esc(u.user_id)}</td>
-        ${isAdmin ? `<td><label class="toggleSwitch" title="${isEditing ? 'Stop editing' : 'Edit'}"><input type="checkbox" data-toggle-type="users" data-toggle-id="${esc(u.user_id)}"${isEditing ? ' checked' : ''}><span class="toggleSlider"></span></label></td>` : ""}
+        ${isAdmin ? `<td><button class="editToggleBtn" data-edit-row="users" data-id="${esc(u.user_id)}">Edit</button></td>` : ""}
       </tr>`;
     }).join("");
 
@@ -1222,13 +1222,13 @@
         const editCells = fields.map(f => {
           const orig = v[f];
           const val  = changes[f]?.new ?? orig;
-          return `<td><input class="editInput" data-type="vehicles" data-id="${esc(v.id)}" data-field="${f}" data-orig="${esc(String(orig))}" value="${esc(String(val ?? ""))}"></td>`;
+          return `<td><input class="editInput" style="min-width:70px;" data-type="vehicles" data-id="${esc(v.id)}" data-field="${f}" data-orig="${esc(String(orig))}" value="${esc(String(val ?? ""))}"></td>`;
         }).join("");
 
-        return `<tr class="editingRow" data-vehicle-id="${esc(v.id)}">
+        return `<tr data-vehicle-id="${esc(v.id)}">
           ${editCells}
           <td><select class="editSelect" data-type="vehicles" data-id="${esc(v.id)}" data-field="customer_id" data-orig="${esc(v.customer_id)}">${custOpts}</select></td>
-          <td><label class="toggleSwitch" title="Stop editing"><input type="checkbox" data-toggle-type="vehicles" data-toggle-id="${esc(v.id)}" checked><span class="toggleSlider"></span></label></td>
+          <td><div class="editBtnWrap"><button class="editToggleBtn" data-cancel-row="vehicles" data-id="${esc(v.id)}">Editing</button><button class="cancelEditBtn" data-cancel-row="vehicles" data-id="${esc(v.id)}">✕</button></div></td>
         </tr>`;
       }
 
@@ -1236,7 +1236,7 @@
         ? (customersData.find(c => c.id === changes.customer_id.new)?.name || "—")
         : v.customer_name;
 
-      return `<tr class="dataRow" data-vehicle-id="${esc(v.id)}">
+      return `<tr data-vehicle-id="${esc(v.id)}">
         <td class="mono">${esc(changes.pep_code?.new ?? v.pep_code)}</td>
         <td>${esc(changes.model?.new ?? v.model)}</td>
         <td>${esc(changes.production_year?.new ?? v.production_year)}</td>
@@ -1244,7 +1244,7 @@
         <td>${esc(changes.cobus_bus_no?.new ?? v.cobus_bus_no)}</td>
         <td>${esc(changes.motor_no?.new ?? v.motor_no)}</td>
         <td>${esc(displayCustomer)}</td>
-        ${canEdit ? `<td><label class="toggleSwitch" title="Edit"><input type="checkbox" data-toggle-type="vehicles" data-toggle-id="${esc(v.id)}"><span class="toggleSlider"></span></label></td>` : ""}
+        ${canEdit ? `<td><button class="editToggleBtn" data-edit-row="vehicles" data-id="${esc(v.id)}">Edit</button></td>` : ""}
       </tr>`;
     }).join("");
 
@@ -1279,21 +1279,21 @@
       const changes   = pendingChanges.customers.get(c.id) || {};
 
       if (isEditing) {
-        return `<tr class="customerRow" data-customer-id="${esc(c.id)}">
+        return `<tr data-customer-id="${esc(c.id)}">
           <td><input class="editInput" data-type="customers" data-id="${esc(c.id)}" data-field="name" data-orig="${esc(c.name)}" value="${esc(changes.name?.new ?? c.name)}"></td>
           <td class="mono small">${esc(c.code)}</td>
-          <td><input class="editInput" data-type="customers" data-id="${esc(c.id)}" data-field="country" data-orig="${esc(c.country||"")}" value="${esc(changes.country?.new ?? (c.country||""))}"></td>
+          <td><input class="editInput" style="min-width:60px;" data-type="customers" data-id="${esc(c.id)}" data-field="country" data-orig="${esc(c.country||"")}" value="${esc(changes.country?.new ?? (c.country||""))}"></td>
           <td><input class="editInput" data-type="customers" data-id="${esc(c.id)}" data-field="notes" data-orig="${esc(c.notes||"")}" value="${esc(changes.notes?.new ?? (c.notes||""))}"></td>
-          <td><label class="toggleSwitch" title="Stop editing"><input type="checkbox" data-toggle-type="customers" data-toggle-id="${esc(c.id)}" checked><span class="toggleSlider"></span></label></td>
+          <td><div class="editBtnWrap"><button class="editToggleBtn" data-cancel-row="customers" data-id="${esc(c.id)}">Editing</button><button class="cancelEditBtn" data-cancel-row="customers" data-id="${esc(c.id)}">✕</button></div></td>
         </tr>`;
       }
 
-      return `<tr class="customerRow" data-customer-id="${esc(c.id)}">
+      return `<tr data-customer-id="${esc(c.id)}">
         <td><strong>${esc(changes.name?.new ?? c.name)}</strong></td>
         <td class="mono small">${esc(c.code)}</td>
         <td>${esc(changes.country?.new ?? (c.country||""))}</td>
         <td style="color:#6b7280;font-size:12px;">${esc(changes.notes?.new ?? (c.notes||""))}</td>
-        ${isAdmin ? `<td><label class="toggleSwitch" title="Edit"><input type="checkbox" data-toggle-type="customers" data-toggle-id="${esc(c.id)}"><span class="toggleSlider"></span></label></td>` : ""}
+        ${isAdmin ? `<td><button class="editToggleBtn" data-edit-row="customers" data-id="${esc(c.id)}">Edit</button></td>` : ""}
       </tr>`;
     }).join("");
 
@@ -1566,314 +1566,33 @@
     }
   });
 
-  // ── Toggle switch handler (replaces edit button click) ───────────────────
-  document.addEventListener('change', (e) => {
-    const toggle = e.target;
-    if (!toggle.matches('input[data-toggle-type]')) return;
-    const type = toggle.dataset.toggleType;
-    const id   = toggle.dataset.toggleId;
-    if (toggle.checked) {
+  // ── Delegated edit row toggle ─────────────────────────────────────────────
+  document.addEventListener("click", (e) => {
+    // Open edit mode
+    const editBtn = e.target.closest("[data-edit-row]");
+    if (editBtn) {
+      const type = editBtn.dataset.editRow;
+      const id   = editBtn.dataset.id;
       editingRows[type].add(id);
-    } else {
+      if (type === "users") sortAndRenderActive();
+      else if (type === "vehicles") renderVehicles();
+      else if (type === "customers") renderCustomersTable();
+      return;
+    }
+
+    // Cancel edit mode
+    const cancelBtn = e.target.closest("[data-cancel-row]");
+    if (cancelBtn) {
+      const type = cancelBtn.dataset.cancelRow;
+      const id   = cancelBtn.dataset.id;
       editingRows[type].delete(id);
       pendingChanges[type].delete(id);
       updatePendingBar();
-    }
-    if (type === "users") sortAndRenderActive();
-    else if (type === "vehicles") renderVehicles();
-    else if (type === "customers") renderCustomersTable();
-  });
-
-  // ── Customer row expansion ────────────────────────────────────────────────
-  const expandedCustomers = new Set();
-
-  async function toggleCustomerExpanded(customerId, tr) {
-    const existingExpanded = tr.nextElementSibling;
-    if (existingExpanded?.classList.contains('customerExpandedRow')) {
-      existingExpanded.remove();
-      tr.classList.remove('expanded');
-      expandedCustomers.delete(customerId);
-      return;
-    }
-
-    tr.classList.add('expanded');
-    expandedCustomers.add(customerId);
-
-    const colCount = tr.querySelectorAll('td').length;
-    const expandedTr = document.createElement('tr');
-    expandedTr.className = 'customerExpandedRow';
-    expandedTr.innerHTML = `<td colspan="${colCount}"><div class="customerExpandedInner"><div class="expandLoading">Loading…</div></div></td>`;
-    tr.after(expandedTr);
-
-    try {
-      // 1. Get vehicles for this customer
-      const { data: vehicles } = await sb.from('vehicles').select('id').eq('customer_id', customerId);
-      const vehicleIds = (vehicles || []).map(v => v.id);
-
-      // 2. Get catalogs via vehicle_catalogs
-      let catalogMap = new Map();
-      if (vehicleIds.length) {
-        const { data: vcs } = await sb
-          .from('vehicle_catalogs')
-          .select('catalog_id, catalogs(id, name, pai_code)')
-          .in('vehicle_id', vehicleIds);
-        for (const vc of (vcs || [])) {
-          if (vc.catalogs && !catalogMap.has(vc.catalog_id)) {
-            catalogMap.set(vc.catalog_id, vc.catalogs);
-          }
-        }
-      }
-
-      // 3. Get order requests for this customer
-      const { data: orders } = await sb
-        .from('order_requests')
-        .select('id, created_at, content_text, catalog_id')
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: false });
-
-      // Group order requests by catalog_id
-      const ordersByCatalog = new Map();
-      const ordersNoCatalog = [];
-      for (const o of (orders || [])) {
-        if (o.catalog_id) {
-          if (!ordersByCatalog.has(o.catalog_id)) ordersByCatalog.set(o.catalog_id, []);
-          ordersByCatalog.get(o.catalog_id).push(o);
-        } else {
-          ordersNoCatalog.push(o);
-        }
-      }
-
-      // Build table rows
-      const allCatalogIds = new Set([...catalogMap.keys(), ...ordersByCatalog.keys()]);
-
-      if (!allCatalogIds.size && !ordersNoCatalog.length) {
-        expandedTr.querySelector('.customerExpandedInner').innerHTML =
-          `<div style="color:#9ca3af;font-size:12px;">No catalogs or order requests found for this customer.</div>`;
-        return;
-      }
-
-      function orderChips(orderList) {
-        if (!orderList?.length) return '<span style="color:#9ca3af;font-size:11px;">—</span>';
-        return orderList.map(o => {
-          const dt = o.created_at ? new Date(o.created_at).toLocaleDateString('en-GB') : '';
-          const shortId = o.id.slice(0, 8);
-          return `<span class="orderReqChip" data-order-content="${esc(o.content_text || '')}" data-order-id="${esc(o.id)}">${esc(dt)} · ${esc(shortId)}…</span>`;
-        }).join('');
-      }
-
-      let rows = '';
-      for (const catalogId of allCatalogIds) {
-        const cat = catalogMap.get(catalogId);
-        const catOrders = ordersByCatalog.get(catalogId) || [];
-        const catName = cat ? `${esc(cat.name)}<br><code style="font-size:10px;color:#6b7280">${esc(cat.pai_code)}</code>` : `<span style="color:#9ca3af">Unknown catalog</span>`;
-        const goBtn = cat ? `<div class="catalogGoWrap" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;">
-          <button class="catalogGoBtn" data-pai="${esc(cat.pai_code)}" data-name="${esc(cat.name)}" title="Go to catalog">→</button>
-          <div class="catalogGoBubble hidden" data-bubble-pai="${esc(cat.pai_code)}">Open catalog: ${esc(cat.name)} →</div>
-        </div>` : '';
-        rows += `<tr>
-          <td>${catName}${goBtn}</td>
-          <td>${orderChips(catOrders)}</td>
-        </tr>`;
-      }
-      if (ordersNoCatalog.length) {
-        rows += `<tr>
-          <td><span style="color:#9ca3af;font-size:11px;">No catalog assigned</span></td>
-          <td>${orderChips(ordersNoCatalog)}</td>
-        </tr>`;
-      }
-
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `
-        <table class="catalogOrdersTable">
-          <colgroup><col style="width:40%"><col></colgroup>
-          <thead><tr><th>Catalog</th><th>Order requests</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-
-    } catch (err) {
-      console.error('Customer expansion error:', err);
-      expandedTr.querySelector('.customerExpandedInner').innerHTML =
-        `<div style="color:#b91c1c;font-size:12px;">Error loading data: ${esc(String(err.message || err))}</div>`;
-    }
-  }
-
-  // Delegated: catalog go button
-  document.addEventListener('click', (e) => {
-    const goBtn = e.target.closest('.catalogGoBtn');
-    if (goBtn) {
-      e.stopPropagation();
-      const wrap = goBtn.closest('.catalogGoWrap');
-      const bubble = wrap?.querySelector('.catalogGoBubble');
-      if (bubble) bubble.classList.toggle('hidden');
-      return;
-    }
-    const bubble = e.target.closest('.catalogGoBubble');
-    if (bubble) {
-      const pai = bubble.dataset.bubblePai;
-      if (pai) window.open(`interactive-catalog.html?catalog=${encodeURIComponent(pai)}`, '_blank');
-      return;
-    }
-    // Close any open bubbles when clicking elsewhere
-    if (!e.target.closest('.catalogGoWrap')) {
-      document.querySelectorAll('.catalogGoBubble:not(.hidden)').forEach(b => b.classList.add('hidden'));
+      if (type === "users") sortAndRenderActive();
+      else if (type === "vehicles") renderVehicles();
+      else if (type === "customers") renderCustomersTable();
     }
   });
-
-  // Delegated: order request chip
-  document.addEventListener('click', (e) => {
-    const chip = e.target.closest('.orderReqChip');
-    if (!chip) return;
-    e.stopPropagation();
-    const content = chip.dataset.orderContent || '';
-    const id = chip.dataset.orderId || '';
-    $('orderReqPopupTitle').textContent = `Order request · ${id.slice(0, 8)}…`;
-    $('orderReqPopupContent').textContent = content;
-    $('orderReqPopup').hidden = false;
-  });
-  on('btnOrderReqPopupClose', 'click', () => { $('orderReqPopup').hidden = true; });
-  on('orderReqPopupBackdrop', 'click', () => { $('orderReqPopup').hidden = true; });
-
-  on('orderReqPopupBackdrop', 'click', () => { $('orderReqPopup').hidden = true; });
-
-  // ── User row expansion ────────────────────────────────────────────────────
-  const expandedUsers = new Set();
-
-  async function toggleUserExpanded(userId, tr) {
-    const existingExpanded = tr.nextElementSibling;
-    if (existingExpanded?.classList.contains('userExpandedRow')) {
-      existingExpanded.remove();
-      tr.classList.remove('expanded');
-      expandedUsers.delete(userId);
-      return;
-    }
-    tr.classList.add('expanded');
-    expandedUsers.add(userId);
-    const colCount = tr.querySelectorAll('td').length;
-    const expandedTr = document.createElement('tr');
-    expandedTr.className = 'userExpandedRow';
-    expandedTr.innerHTML = `<td colspan="${colCount}" style="padding:0;background:#f8fafc;border-bottom:1px solid var(--line)"><div class="customerExpandedInner"><div class="expandLoading">Loading…</div></div></td>`;
-    tr.after(expandedTr);
-
-    try {
-      const u = activeUsersData.find(x => x.user_id === userId);
-      const customerId = u?.raw_customer_id;
-      if (!customerId) {
-        expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#9ca3af;font-size:12px;">No customer assigned to this user.</div>`;
-        return;
-      }
-      const { data: vehicles } = await sb.from('vehicles').select('id,pep_code,model,production_year,vin,cobus_bus_no,motor_no').eq('customer_id', customerId);
-      const vehicleIds = (vehicles || []).map(v => v.id);
-      const vehicleMap = new Map((vehicles || []).map(v => [v.id, v]));
-      let catalogMap = new Map();
-      let vehiclesByCatalog = new Map();
-      if (vehicleIds.length) {
-        const { data: vcs } = await sb.from('vehicle_catalogs').select('vehicle_id,catalog_id,catalogs(id,name,pai_code)').in('vehicle_id', vehicleIds);
-        for (const vc of (vcs || [])) {
-          if (vc.catalogs && !catalogMap.has(vc.catalog_id)) catalogMap.set(vc.catalog_id, vc.catalogs);
-          if (!vehiclesByCatalog.has(vc.catalog_id)) vehiclesByCatalog.set(vc.catalog_id, new Set());
-          vehiclesByCatalog.get(vc.catalog_id).add(vc.vehicle_id);
-        }
-      }
-      if (!catalogMap.size) {
-        expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#9ca3af;font-size:12px;">No catalogs associated with this user's customer.</div>`;
-        return;
-      }
-      let rows = '';
-      for (const [catalogId, cat] of catalogMap) {
-        const pepChips = [...(vehiclesByCatalog.get(catalogId) || [])].map(vid => {
-          const v = vehicleMap.get(vid);
-          if (!v) return '';
-          const vData = esc(JSON.stringify({pep_code:v.pep_code,model:v.model,production_year:v.production_year,vin:v.vin,cobus_bus_no:v.cobus_bus_no,motor_no:v.motor_no}));
-          return `<span class="pepChip" data-vehicle-json="${vData}" data-pep="${esc(v.pep_code)}">${esc(v.pep_code||v.id.slice(0,8))}</span>`;
-        }).join('');
-        rows += `<tr><td><strong>${esc(cat.name)}</strong><br><code style="font-size:10px;color:#6b7280">${esc(cat.pai_code)}</code><div class="catalogGoWrap" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;"><button class="catalogGoBtn" data-pai="${esc(cat.pai_code)}" data-name="${esc(cat.name)}" title="Go to catalog">→</button><div class="catalogGoBubble hidden" data-bubble-pai="${esc(cat.pai_code)}">Open catalog: ${esc(cat.name)} →</div></div></td><td>${pepChips||'<span style="color:#9ca3af;font-size:11px;">—</span>'}</td></tr>`;
-      }
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<table class="catalogOrdersTable"><colgroup><col style="width:40%"><col></colgroup><thead><tr><th>Catalog</th><th>Vehicles (PEP Code)</th></tr></thead><tbody>${rows}</tbody></table>`;
-    } catch (err) {
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#b91c1c;font-size:12px;">Error: ${esc(String(err.message||err))}</div>`;
-    }
-  }
-
-  // ── Vehicle row expansion ─────────────────────────────────────────────────
-  const expandedVehicles = new Set();
-
-  async function toggleVehicleExpanded(vehicleId, tr) {
-    const existingExpanded = tr.nextElementSibling;
-    if (existingExpanded?.classList.contains('vehicleExpandedRow')) {
-      existingExpanded.remove();
-      tr.classList.remove('expanded');
-      expandedVehicles.delete(vehicleId);
-      return;
-    }
-    tr.classList.add('expanded');
-    expandedVehicles.add(vehicleId);
-    const colCount = tr.querySelectorAll('td').length;
-    const expandedTr = document.createElement('tr');
-    expandedTr.className = 'vehicleExpandedRow';
-    expandedTr.innerHTML = `<td colspan="${colCount}" style="padding:0;background:#f8fafc;border-bottom:1px solid var(--line)"><div class="customerExpandedInner"><div class="expandLoading">Loading…</div></div></td>`;
-    tr.after(expandedTr);
-    try {
-      const { data: vcs } = await sb.from('vehicle_catalogs').select('catalog_id,catalogs(id,name,pai_code)').eq('vehicle_id', vehicleId);
-      if (!vcs?.length) {
-        expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#9ca3af;font-size:12px;">No catalogs associated with this vehicle.</div>`;
-        return;
-      }
-      const rows = vcs.map(vc => {
-        const cat = vc.catalogs;
-        if (!cat) return '';
-        return `<tr><td><strong>${esc(cat.name)}</strong><br><code style="font-size:10px;color:#6b7280">${esc(cat.pai_code)}</code></td><td><div class="catalogGoWrap" style="display:inline-flex;align-items:center;gap:4px;"><button class="catalogGoBtn" data-pai="${esc(cat.pai_code)}" data-name="${esc(cat.name)}" title="Go to catalog">→</button><div class="catalogGoBubble hidden" data-bubble-pai="${esc(cat.pai_code)}">Open catalog: ${esc(cat.name)} →</div></div></td></tr>`;
-      }).join('');
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<table class="catalogOrdersTable"><colgroup><col style="width:55%"><col></colgroup><thead><tr><th>Catalog</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-    } catch (err) {
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#b91c1c;font-size:12px;">Error: ${esc(String(err.message||err))}</div>`;
-    }
-  }
-
-  // ── Vehicle detail popup (pep chip) ───────────────────────────────────────
-  on('btnVehicleDetailClose',    'click', () => { $('vehicleDetailPopup').hidden = true; });
-  on('vehicleDetailPopupBackdrop','click', () => { $('vehicleDetailPopup').hidden = true; });
-
-  document.addEventListener('click', (e) => {
-    const chip = e.target.closest('.pepChip');
-    if (!chip) return;
-    e.stopPropagation();
-    try {
-      const v = JSON.parse(chip.dataset.vehicleJson);
-      $('vehicleDetailPopupTitle').textContent = `Vehicle · ${chip.dataset.pep || '—'}`;
-      $('vehicleDetailTable').innerHTML = [
-        ['PEP Code', v.pep_code], ['Model', v.model], ['Year', v.production_year],
-        ['VIN', v.vin], ['Bus No.', v.cobus_bus_no], ['Motor No.', v.motor_no],
-      ].map(([l, val]) => `<tr><td>${esc(l)}</td><td>${esc(String(val||'—'))}</td></tr>`).join('');
-      $('vehicleDetailPopup').hidden = false;
-    } catch {}
-  });
-
-  // ── Delegated row clicks to expand ───────────────────────────────────────
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('input[data-toggle-type]') || e.target.closest('.toggleSwitch') ||
-        e.target.closest('.pepChip') || e.target.closest('.orderReqChip') ||
-        e.target.closest('.catalogGoBtn') || e.target.closest('.catalogGoBubble')) return;
-
-    const userTr = e.target.closest('tr.dataRow[data-user-id]');
-    if (userTr) { toggleUserExpanded(userTr.dataset.userId, userTr); return; }
-
-    const vehicleTr = e.target.closest('tr.dataRow[data-vehicle-id]');
-    if (vehicleTr) { toggleVehicleExpanded(vehicleTr.dataset.vehicleId, vehicleTr); return; }
-
-    const customerTr = e.target.closest('tr.customerRow[data-customer-id]');
-    if (customerTr) { toggleCustomerExpanded(customerTr.dataset.customerId, customerTr); return; }
-  });
-
-  // ── Vehicle add-line placeholder ──────────────────────────────────────────
-  function addVehicleAddPlaceholder() {
-    const tbody = $('vehiclesInputTbody');
-    const existing = tbody.querySelector('.vehicleAddRow');
-    if (existing) existing.remove();
-    const tr = document.createElement('tr');
-    tr.className = 'vehicleAddRow';
-    tr.innerHTML = `<td colspan="8">+ Add new line</td>`;
-    tr.addEventListener('click', () => { addVehicleInputRow(); });
-    tbody.appendChild(tr);
-  }
 
   // ── Delegated inline edit change tracking ────────────────────────────────
   function handleEditChange(e) {
@@ -1943,14 +1662,13 @@
         style="width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:500 13px 'Rubik',sans-serif;" /></td>
     `).join("") +
     `<td>${customerSelectHtml(data.customer_id||"")}</td>
-    <td><button type="button" class="btn btn-danger vc-remove" style="padding:4px 10px;font-size:12px;">✕</button></td>`;
+    <td><button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="this.closest('tr').remove()">✕</button></td>`;
     tbody.appendChild(tr);
-    addVehicleAddPlaceholder();
   }
 
   function clearVehicleInputTable() {
     $("vehiclesInputTbody").innerHTML = "";
-    addVehicleAddPlaceholder();
+    addVehicleInputRow();
   }
 
   function getVehicleInputRows() {
@@ -2087,15 +1805,8 @@
     }
   });
 
+  on("btnAddVehicleRow",  "click", () => addVehicleInputRow());
   on("btnClearVehicles",  "click", () => { clearVehicleInputTable(); toast.success("Cleared."); });
-
-  // Delegated: vehicle input row remove
-  $("vehiclesInputTbody")?.addEventListener("click", (e) => {
-    const btn = e.target.closest(".vc-remove");
-    if (!btn) return;
-    btn.closest("tr").remove();
-    addVehicleAddPlaceholder();
-  });
 
   // ── Init ─────────────────────────────────────────────────────────────────
 
