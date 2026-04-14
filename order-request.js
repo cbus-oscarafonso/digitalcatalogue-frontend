@@ -27,7 +27,7 @@ function catalogDisplayName(group) {
 // ── Modal rendering ───────────────────────────────────────────────────────────
 // Renders the full cart grouped by catalog into a modal body element.
 // readOnly: true in client-area (no qty editing / remove buttons)
-window.renderCartModalGrouped = function(bodyEl, cart, readOnly) {
+window.renderCartModalGrouped = function (bodyEl, cart, readOnly) {
   if (!bodyEl) return;
   bodyEl.innerHTML = '';
 
@@ -55,12 +55,13 @@ window.renderCartModalGrouped = function(bodyEl, cart, readOnly) {
     label.textContent = catalogDisplayName(group);
     bodyEl.appendChild(label);
 
-    group.rows.forEach(({ row, idx }) => {
-      const r = document.createElement('div');
-      r.className = 'cartRow';
 
-      const pn    = document.createElement('div'); pn.className = 'pnCell';    pn.textContent = row.partNo;
-      const desc  = document.createElement('div');                              desc.textContent = row.desc;
+    group.rows.forEach(({ row, idx }, i) => {
+      const r = document.createElement('div');
+      r.className = i === group.rows.length - 1 ? 'cartRow cartRowLast' : 'cartRow';
+
+      const pn = document.createElement('div'); pn.className = 'pnCell'; pn.textContent = row.partNo;
+      const desc = document.createElement('div'); desc.textContent = row.desc;
       const price = document.createElement('div'); price.className = 'priceCell'; price.textContent = row.price || 'TBA';
 
       if (readOnly) {
@@ -130,18 +131,18 @@ function buildAggregatedText(dt, groups) {
 // cart: array of cart items
 // onSuccess: callback after successful send (clears cart, closes modal, etc.)
 // btnEl: the send button element (for disabled state)
-window.sendOrderRequest = async function(cart, onSuccess, btnEl) {
+window.sendOrderRequest = async function (cart, onSuccess, btnEl) {
   if (!cart || !cart.length) { window.toast?.error('Your cart is empty!'); return; }
 
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Sending…'; }
 
   const now = new Date();
-  const dt  = now.toISOString().replace('T', ' ').slice(0, 19);
+  const dt = now.toISOString().replace('T', ' ').slice(0, 19);
 
   const groups = buildCartGroups(cart);
 
   // Fetch session + customer_id once
-  let userId     = null;
+  let userId = null;
   let customerId = null;
   try {
     const { data: { session } } = await window.sb.auth.getSession();
@@ -166,10 +167,10 @@ window.sendOrderRequest = async function(cart, onSuccess, btnEl) {
   for (const group of groups) {
     const contentText = buildGroupContentText(dt, group);
     const { error } = await window.sb.from('order_requests').insert({
-      user_id:      userId,
+      user_id: userId,
       content_text: contentText,
-      catalog_id:   group.catalogId || null,
-      customer_id:  customerId,
+      catalog_id: group.catalogId || null,
+      customer_id: customerId,
     });
     if (error) {
       console.error('Supabase insert failed:', error);
@@ -184,12 +185,12 @@ window.sendOrderRequest = async function(cart, onSuccess, btnEl) {
   }
 
   // Download aggregated .txt
-  const ts          = now.toISOString().slice(0, 16).replace('T', '_').replace(':', '');
-  const aggregated  = buildAggregatedText(dt, groups);
-  const blob        = new Blob([aggregated], { type: 'text/plain;charset=utf-8' });
-  const a           = document.createElement('a');
-  a.href            = URL.createObjectURL(blob);
-  a.download        = `order_request_${ts}.txt`;
+  const ts = now.toISOString().slice(0, 16).replace('T', '_').replace(':', '');
+  const aggregated = buildAggregatedText(dt, groups);
+  const blob = new Blob([aggregated], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `order_request_${ts}.txt`;
   document.body.appendChild(a);
   a.click();
   a.remove();
