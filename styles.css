@@ -1654,3 +1654,42 @@ body {
   background: #fef3c7;
   color: #92400e;
 }
+
+/* Mini-cart catalog title */
+.cartCatalogTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  padding: 8px 0 4px;
+}
+
+/* Modal catalog group label */
+.cartCatalogLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #003764;
+  padding: 12px 0 4px;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 4px;
+}
+
+.cartCatalogLabel:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 4px;
+}
+
+/* Multi-catalog notice in modal */
+.cartMultiNotice {
+  font-size: 12px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
