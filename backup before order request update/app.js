@@ -236,76 +236,52 @@ function clearSelected() {
   state.selected = null;
 }
 
-// ── Mini-cart (right panel) ───────────────────────────────────────────────────
-// Shows only items from the currently open catalog.
-// The modal uses window.renderCartModalGrouped from order-request.js.
-
-function buildMiniCartRowEl(row, idx) {
-  const r = document.createElement('div'); r.className = 'cartRow';
-
-  const pn    = document.createElement('div'); pn.className = 'pnCell';    pn.textContent = row.partNo;
-  const desc  = document.createElement('div');                              desc.textContent = row.desc;
-  const price = document.createElement('div'); price.className = 'priceCell'; price.textContent = row.price || 'TBA';
-
-  const qty = document.createElement('input');
-  qty.type = 'number'; qty.min = '1'; qty.value = String(row.qty);
-  qty.addEventListener('change', () => {
-    row.qty = Math.max(1, parseInt(qty.value || '1', 10));
-    renderCart();
-  });
-
-  const rm = document.createElement('button'); rm.className = 'rmBtn'; rm.textContent = '✕';
-  rm.addEventListener('click', () => {
-    state.cart.splice(idx, 1);
-    renderCart();
-  });
-
-  r.append(pn, desc, price, qty, rm);
-  return r;
-}
-
 function renderCartInto(bodyEl) {
   if (!bodyEl) return;
   bodyEl.innerHTML = '';
 
-  // Mini-cart: filter to current catalog only
-  const currentCatalogId = state.catalog?.id || null;
-  const items = currentCatalogId
-    ? state.cart.filter(r => r.catalogId === currentCatalogId)
-    : state.cart;
-
-  if (!items.length) {
+  if (!state.cart.length) {
     const d = document.createElement('div');
     d.style.color = '#6b7280';
     d.style.padding = '12px 0';
-    d.textContent = state.cart.length ? 'No items from this catalog.' : 'Cart empty.';
+    d.textContent = 'Cart empty.';
     bodyEl.appendChild(d);
     return;
   }
 
-  items.forEach((row) => {
-    const idx = state.cart.indexOf(row);
-    bodyEl.appendChild(buildMiniCartRowEl(row, idx));
+  state.cart.forEach((row, idx) => {
+    const r = document.createElement('div'); r.className = 'cartRow';
+
+    const pn = document.createElement('div'); pn.className = 'pnCell'; pn.textContent = row.partNo;
+    const desc = document.createElement('div'); desc.textContent = row.desc;
+    const price = document.createElement('div'); price.className = 'priceCell'; price.textContent = row.price || 'TBA';
+
+    const qty = document.createElement('input');
+    qty.type = 'number';
+    qty.min = '1';
+    qty.value = String(row.qty);
+
+    qty.addEventListener('change', () => {
+      row.qty = Math.max(1, parseInt(qty.value || '1', 10));
+      // sincroniza ambas as views
+      renderCart();
+    });
+
+    const rm = document.createElement('button'); rm.className = 'rmBtn'; rm.textContent = '✕';
+    rm.addEventListener('click', () => {
+      state.cart.splice(idx, 1);
+      renderCart();
+    });
+
+    r.append(pn, desc, price, qty, rm);
+    bodyEl.appendChild(r);
   });
 }
 
 function renderCart() {
   localStorage.setItem('catalogCart', JSON.stringify(state.cart));
-
-  // Expose hooks used by order-request.js renderCartModalGrouped
-  window.__syncCart   = renderCart;
-  window.__cartRemove = (idx) => { state.cart.splice(idx, 1); renderCart(); };
-
-  // Mini-cart title
-  const miniCartTitle = document.getElementById('miniCartTitle');
-  if (miniCartTitle) miniCartTitle.textContent = 'Current catalog';
-
-  renderCartInto($('cartBody'));
-
-  // Modal: use shared renderer from order-request.js
-  const modalBody = $('cartBodyModal');
-  if (modalBody) window.renderCartModalGrouped?.(modalBody, state.cart, false);
-
+  renderCartInto($('cartBody'));       // carrinho pequeno
+  renderCartInto($('cartBodyModal'));  // carrinho grande (modal)
   const badge = $('cartBtnBadge');
   if (badge) {
     const total = state.cart.reduce((s, r) => s + (r.qty || 1), 0);
@@ -327,42 +303,132 @@ function closeOrderModal() {
 }
 
 function setupUI() {
+  async function sendOrderRequest() {
+    if (!state.cart.length) { toast.error('Your cart is empty!'); return; }
+
+    const btnSend = $('btnModalSend');
+    if (btnSend) { btnSend.disabled = true; btnSend.textContent = 'Sending…'; }
+
+    const dt = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+    let out = '';
+    out += 'Order request\n';
+    out += `Date/time: ${dt}\n\n`;
+
+    out += 'Items:\n';
+    out += 'P/N | Description | Price | Qty\n';
+    out += '--------------------------------\n';
+
+    for (const r of state.cart) {
+      out += `${r.partNo} | ${r.desc} | ${r.price || 'TBA'} | ${r.qty}\n`;
+    }
+
+    // ===== guardar pedido na BD (Supabase) =====
+    try {
+      const { data: { session } } = await window.sb.auth.getSession();
+      const userId = session?.user?.id || null;
+
+      let customerId = null;
+      if (userId) {
+        const { data: prof } = await window.sb
+          .from('profiles')
+          .select('customer_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        customerId = prof?.customer_id || null;
+      }
+
+      const { error } = await window.sb.from('order_requests').insert({
+        user_id: userId,
+        content_text: out,
+        catalog_id: state.catalog?.id || null,
+        customer_id: customerId,
+      });
+
+      if (error) {
+        console.error('Supabase insert failed:', error);
+        toast.error('Failed to save order request. Please try again.');
+        if (btnSend) { btnSend.disabled = false; btnSend.textContent = 'Send order request'; }
+        return;
+      }
+    } catch (e) {
+      console.error('Order request error:', e);
+      toast.error('Failed to save order request. Please try again.');
+      if (btnSend) { btnSend.disabled = false; btnSend.textContent = 'Send order request'; }
+      return;
+    }
+
+    // ===== guardar pedido no browser (fallback local) =====
+    const ts = Date.now();
+    try {
+      const key = 'orderRequestsLocal';
+      const arr = JSON.parse(localStorage.getItem(key) || '[]');
+      arr.unshift({ id: ts, dt: dt, content: out });
+      localStorage.setItem(key, JSON.stringify(arr.slice(0, 200)));
+    } catch (e) { }
+
+    // ===== download =====
+    const blob = new Blob([out], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `order_request_${ts}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+
+    // ===== enviar email (EmailJS) =====
+    if (window.emailjs) {
+      emailjs.send(
+        "service_cbus",
+        "template_tdwabib",
+        {
+          order_id: ts,
+          date_time: dt,
+          order_text: out
+        }
+      ).catch(err => console.warn("EmailJS failed", err));
+    }
+
+    toast("We've received your order request and will get back to you shortly.");
+    state.cart = [];
+    renderCart();
+    closeOrderModal();
+    if (btnSend) { btnSend.disabled = false; btnSend.textContent = 'Send order request'; }
+  }
   $('qtyDown').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) - 1)));
   $('qtyUp').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) + 1)));
   $('qtyInput').addEventListener('change', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10))));
-
   $('btnSend').addEventListener('click', () => {
     if (!state.cart.length) { toast.error('Your cart is empty!'); return; }
-    renderCart();
-    openOrderModal();
+    renderCart();       // garante sync
+    openOrderModal();   // ✅ agora abre modal (não envia)
   });
 
   $('btnAdd').addEventListener('click', () => {
     if (!state.selected) return;
     const qty = Math.max(1, parseInt($('qtyInput').value || '1', 10));
-    const existing = state.cart.find(x => x.partNo === state.selected.partNo && x.catalogId === state.catalog?.id);
+    const existing = state.cart.find(x => x.partNo === state.selected.partNo);
     if (existing) existing.qty += qty;
-    else state.cart.push({
-      partNo:      state.selected.partNo,
-      desc:        state.selected.desc,
-      price:       state.selected.price,
-      qty,
-      catalogId:   state.catalog?.id       || null,
-      paiCode:     state.catalog?.pai_code || null,
-      catalogName: state.catalog?.name     || null,
-    });
-    renderCart(); toast('Added to cart.');
+    else state.cart.push({ partNo: state.selected.partNo, desc: state.selected.desc, price: state.selected.price, qty });
+    renderCart(); toast('Adicionado ao carrinho.');
   });
-
   $('btnOpenSub').addEventListener('click', () => {
     if (!state.selected?.hasSub) return;
+
+    // 👉 guardar descrição do subassembly que vais abrir
     try {
-      sessionStorage.setItem(`pnDesc:${state.selected.partNo}`, state.selected.desc || '');
+      sessionStorage.setItem(
+        `pnDesc:${state.selected.partNo}`,
+        state.selected.desc || ''
+      );
     } catch { }
+
     const next = [...state.path, state.selected.partNo].join('/');
     window.location.hash = '#/' + next;
   });
 
+  // modal: fechar
   $('btnModalClose')?.addEventListener('click', closeOrderModal);
 
   $('orderModal')?.addEventListener('click', (e) => {
@@ -370,14 +436,10 @@ function setupUI() {
     if (t && t.dataset && t.dataset.close === '1') closeOrderModal();
   });
 
-  $('btnModalSend')?.addEventListener('click', () => {
-    window.sendOrderRequest(state.cart, () => {
-      state.cart = [];
-      renderCart();
-      closeOrderModal();
-    }, $('btnModalSend'));
-  });
+  // modal: send
+  $('btnModalSend')?.addEventListener('click', () => sendOrderRequest());
 
+  // tecla ESC fecha
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const m = $('orderModal');

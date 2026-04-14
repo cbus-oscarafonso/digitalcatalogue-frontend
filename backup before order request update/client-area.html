@@ -278,7 +278,6 @@
   <!-- Auth guard -->
   <script src="auth-guard.js"></script>
   <!-- User badge (shared) -->
-  <script src="order-request.js"></script>
   <script src="user-badge.js"></script>
   <script src="toast.js"></script>
 </head>
@@ -414,59 +413,39 @@
 
         if (role === 'customer') {
           const btnCart = document.getElementById('btnCart');
-          const modal   = document.getElementById('orderModal');
+          const modal = document.getElementById('orderModal');
           if (btnCart && modal) {
-            // Show badge if cart has items
+            // show badge if cart has items
             const savedCart = JSON.parse(localStorage.getItem('catalogCart') || '[]');
-            const total     = savedCart.reduce((s, r) => s + (r.qty || 1), 0);
-            const badge     = document.getElementById('cartBtnBadge');
+            const total = savedCart.reduce((s, r) => s + (r.qty || 1), 0);
+            const badge = document.getElementById('cartBtnBadge');
             if (total > 0 && badge) { badge.textContent = total; badge.style.display = ''; }
 
             btnCart.style.display = '';
-
-            function openCartModal() {
-              const cart   = JSON.parse(localStorage.getItem('catalogCart') || '[]');
+            btnCart.addEventListener('click', () => {
+              const cart = JSON.parse(localStorage.getItem('catalogCart') || '[]');
               const bodyEl = document.getElementById('cartBodyModal');
-              // Render grouped, non-editable (quantities cannot be changed from client-area,
-              // user must go to the catalog to edit the cart)
-              window.renderCartModalGrouped?.(bodyEl, cart, false);
-
-              // Wire up qty/remove changes to update localStorage badge
-              window.__syncCart = () => {
-                const updated = JSON.parse(localStorage.getItem('catalogCart') || '[]');
-                const t = updated.reduce((s, r) => s + (r.qty || 1), 0);
-                if (badge) { badge.textContent = t; badge.style.display = t > 0 ? '' : 'none'; }
-                const b = document.getElementById('cartBodyModal');
-                window.renderCartModalGrouped?.(b, updated, false);
-              };
-              window.__cartRemove = (idx) => {
-                const updated = JSON.parse(localStorage.getItem('catalogCart') || '[]');
-                updated.splice(idx, 1);
-                localStorage.setItem('catalogCart', JSON.stringify(updated));
-                window.__syncCart();
-              };
-
+              if (bodyEl) {
+                if (!cart.length) {
+                  bodyEl.innerHTML = '<div style="padding:16px;color:var(--gray,#878787);text-align:center;font-size:13px;">Your cart is empty. Go to the catalog to add items.</div>';
+                } else {
+                  bodyEl.innerHTML = '';
+                  cart.forEach(row => {
+                    const r = document.createElement('div');
+                    r.className = 'cartRow';
+                    r.innerHTML = `<div class="colPN">${_escHtml(row.partNo)}</div><div class="colDesc">${_escHtml(row.desc)}</div><div class="colPrice">${_escHtml(row.price || 'TBA')}</div><div class="colQty">${_escHtml(String(row.qty))}</div><div class="colRm"></div>`;
+                    bodyEl.appendChild(r);
+                  });
+                }
+              }
               modal.hidden = false;
-            }
-
-            btnCart.addEventListener('click', openCartModal);
+            });
 
             document.getElementById('btnModalClose')?.addEventListener('click', () => { modal.hidden = true; });
             document.getElementById('orderModalBackdrop')?.addEventListener('click', () => { modal.hidden = true; });
-
-            document.getElementById('btnModalSend')?.addEventListener('click', () => {
-              const cart = JSON.parse(localStorage.getItem('catalogCart') || '[]');
-              window.sendOrderRequest(cart, () => {
-                localStorage.setItem('catalogCart', '[]');
-                if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
-                modal.hidden = true;
-                // Reload orders table to reflect new entries
-                window.__reloadOrders?.();
-              }, document.getElementById('btnModalSend'));
-            });
-
-            document.addEventListener('keydown', (e) => {
-              if (e.key === 'Escape' && !modal.hidden) modal.hidden = true;
+            document.getElementById('btnGoToCatalog')?.addEventListener('click', () => {
+              modal.hidden = true;
+              openCatalogPicker(role);
             });
           }
         }
@@ -489,7 +468,7 @@
     <div class="modalBackdrop" id="orderModalBackdrop"></div>
     <div class="modalPanel" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
       <div class="modalTop">
-        <div class="panelTitle" id="orderModalTitle">Review full order request</div>
+        <div class="panelTitle" id="orderModalTitle">Review order request</div>
       </div>
       <div class="modalBody">
         <div class="cart cartModal">
@@ -504,8 +483,8 @@
         </div>
       </div>
       <div class="modalFooter">
-        <button class="btn" id="btnModalClose" type="button">Back to catalog</button>
-        <button class="btn primary" id="btnModalSend" type="button">Send order request</button>
+        <button class="btn" id="btnModalClose" type="button">Close</button>
+        <button class="btn primary" id="btnGoToCatalog" type="button">Go to catalog</button>
       </div>
     </div>
   </div>

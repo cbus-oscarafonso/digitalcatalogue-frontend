@@ -198,13 +198,6 @@ async function main() {
     renderOrdersTable(allOrders, isCustomer, openOrder, window.__selectedOrderId);
 
     if (allOrders.length) openOrder(allOrders[0].id);
-
-    // Expose reload hook for post-send refresh (called by order modal in client-area.html)
-    window.__reloadOrders = async () => {
-      const ordersTableWrap = $("ordersTableWrap");
-      if (ordersTableWrap) ordersTableWrap.innerHTML = `<div class="listEmpty">Loading…</div>`;
-      await main();
-    };
   }
 
   // ── CATALOGUES ────────────────────────────────────────────────────────────

@@ -35,8 +35,11 @@
     })();
   </script>
 
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <script>emailjs.init("MZYyITH-LtcuLEhJg");</script>
+
   <!-- User badge (shared) -->
-  <script src="order-request.js"></script>
   <script src="user-badge.js"></script>
   <script src="toast.js"></script>
 </head>
@@ -144,11 +147,10 @@
             <div class="colQty">Qty</div>
             <div class="colRm"></div>
           </div>
-          <div class="cartCatalogTitle" id="miniCartTitle">Current catalog</div>
           <div class="cartBody" id="cartBody"></div>
 
           <div class="cartFooter">
-            <button class="btn big primary" id="btnSend">Review full order request</button>
+            <button class="btn big primary" id="btnSend">Review order request</button>
             <div class="hint">Please ensure that the desired part numbers and quantities are correct before submitting
               your request.</div>
           </div>
