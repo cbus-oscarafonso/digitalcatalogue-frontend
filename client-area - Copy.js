@@ -162,24 +162,13 @@ async function main() {
           customer_id,
           user_id,
           catalogs ( name ),
-          customers ( name )
+          customers ( name ),
+          profiles ( requested_full_name, requested_email )
         `)
         .order("created_at", { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;
-
-      // Fetch profiles separately (order_requests.user_id → auth.users → profiles
-      // crosses schema boundaries so PostgREST cannot infer the join directly)
-      const userIds = [...new Set((data || []).map(r => r.user_id).filter(Boolean))];
-      let profileMap = {};
-      if (userIds.length) {
-        const { data: profs } = await window.sb
-          .from('profiles')
-          .select('user_id, requested_full_name, requested_email')
-          .in('user_id', userIds);
-        (profs || []).forEach(p => { profileMap[p.user_id] = p; });
-      }
 
       allOrders = (data || []).map(row => ({
         id: row.id,
@@ -187,8 +176,8 @@ async function main() {
         content: row.content_text || "",
         catalog: row.catalogs?.name || row.catalog_id || "—",
         customer: row.customers?.name || "—",
-        user_name: profileMap[row.user_id]?.requested_full_name || "—",
-        user_email: profileMap[row.user_id]?.requested_email || "",
+        user_name: row.profiles?.requested_full_name || "—",
+        user_email: row.profiles?.requested_email || "",
       }));
     } catch (e) {
       console.error("Failed to load order_requests:", e);
@@ -209,6 +198,13 @@ async function main() {
     renderOrdersTable(allOrders, isCustomer, openOrder, window.__selectedOrderId);
 
     if (allOrders.length) openOrder(allOrders[0].id);
+
+    // Expose reload hook for post-send refresh (called by order modal in client-area.html)
+    window.__reloadOrders = async () => {
+      const ordersTableWrap = $("ordersTableWrap");
+      if (ordersTableWrap) ordersTableWrap.innerHTML = `<div class="listEmpty">Loading…</div>`;
+      await main();
+    };
   }
 
   // ── CATALOGUES ────────────────────────────────────────────────────────────
