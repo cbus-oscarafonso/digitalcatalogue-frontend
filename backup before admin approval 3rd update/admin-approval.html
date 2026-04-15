@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="pt-PT" style="visibility:hidden;">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin – Approvals</title>
+
+  <style>
+    html {
+      visibility: hidden;
+    }
+  </style>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="auth-guard.js"></script>
+
+  <script>
+    (function () {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = 'styles.css?v=' + Date.now();
+      document.head.appendChild(l);
+    })();
+  </script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Rubik", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg, #87878766);
+      color: #111827;
+    }
+
+    .layoutAdmin {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .adminPanel {
+      background: var(--card, #fff);
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: var(--radius, 14px);
+      box-shadow: var(--shadow, 0 10px 25px rgba(0, 0, 0, .08));
+      overflow: visible;
+    }
+
+    .adminPanelTop {
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid var(--line, #e5e7eb);
+      background: var(--blue, #003764);
+      border-radius: var(--radius, 14px) var(--radius, 14px) 0 0;
+    }
+
+    .adminPanelBody {
+      padding: 14px;
+    }
+
+    .adminTableWrap {
+      padding: 0 14px 14px 14px;
+      overflow-x: auto;
+    }
+
+    .panelTitleAdmin {
+      font-weight: 700;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .adminSub {
+      margin-top: 8px;
+      color: rgba(255,255,255,.75);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .msg {
+      margin-top: 12px;
+      font-size: 14px;
+      min-height: 18px;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .small {
+      font-size: 12px;
+      color: var(--gray, #878787);
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .field {
+      min-width: 260px;
+      flex: 1 1 260px;
+    }
+
+    .field-wide {
+      min-width: 320px;
+      flex: 1 1 320px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--gray, #878787);
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    input,
+    textarea,
+    button,
+    select {
+      font: inherit;
+    }
+
+    input,
+    textarea,
+    select {
+      padding: 10px;
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      background: #fff;
+      font: 500 14px "Rubik", system-ui, sans-serif;
+    }
+
+    /* Prevent checkbox from inheriting full-width input styles */
+    input[type="checkbox"] {
+      width: auto;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      margin: 0;
+      cursor: pointer;
+      accent-color: var(--blue, #003764);
+      width: 16px;
+      height: 16px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(0, 55, 100, .35);
+      box-shadow: 0 0 0 3px rgba(0, 55, 100, .12);
+    }
+
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    .btn {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--blue, #003764);
+      background: var(--gray3, rgba(135, 135, 135, .5));
+      color: #111827;
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+      transition: transform .12s ease, box-shadow .16s ease, filter .16s ease;
+      box-shadow: var(--sh3d, 0 8px 18px rgba(0, 0, 0, .14));
+    }
+
+    .btn:hover {
+      filter: brightness(1.04);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn.primary {
+      background: var(--blue, #003764);
+      border-color: var(--blue, #003764);
+      color: #fff;
+    }
+
+    .btn.btn-danger {
+      background: #b91c1c;
+      border-color: #b91c1c;
+      color: #fff;
+    }
+
+    .btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      filter: none;
+      transform: none;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .th-sort {
+      cursor: pointer;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid var(--line, #e5e7eb);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 12px;
+      color: var(--gray, #878787);
+      font-weight: 700;
+      user-select: none;
+    }
+
+    td {
+      font-size: 13px;
+    }
+
+    .choiceGrid {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) 40px minmax(360px, 1fr);
+      gap: 16px;
+      align-items: start;
+      margin-top: 12px;
+    }
+
+    .choiceCard,
+    .subCard {
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, .06);
+      min-width: 0;
+    }
+
+    .choiceTitle,
+    .subCardTitle {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--blue, #003764);
+      margin: 0 0 10px 0;
+    }
+
+    .orSep {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray, #878787);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .06em;
+    }
+
+    .choiceCard.is-disabled {
+      opacity: .55;
+    }
+
+    .choiceCard input:disabled,
+    .choiceCard textarea:disabled {
+      background: #f3f4f6;
+      cursor: not-allowed;
+    }
+
+    .customerAdminGrid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .existingCustomerBox {
+      margin-top: 12px;
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: 12px;
+      padding: 12px;
+      background: #f9fafb;
+    }
+
+    .customerSuggestWrap,
+    .pickerWrap {
+      position: relative;
+    }
+
+    .pickerInput {
+      padding-right: 28px;
+    }
+
+    .pickerCaret {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: var(--gray, #878787);
+      pointer-events: none;
+    }
+
+    .pickerDropdown {
+      display: none;
+      position: absolute;
+      z-index: 200;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .12);
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .pickerDropdown.open {
+      display: block;
+    }
+
+    .pickerOption {
+      padding: 8px 12px;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .pickerOption:hover,
+    .pickerOption.active {
+      background: #f0f4f8;
+    }
+
+    .pickerCode {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gray, #878787);
+      letter-spacing: .02em;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .pickerName {
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pickerEmpty {
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--gray, #878787);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Role dropdown inside internal pending table */
+    .roleSelectInline {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line, #e5e7eb);
+      font: 500 13px "Rubik", system-ui, sans-serif;
+      background: #fff;
+      min-width: 160px;
+    }
+
+    .roleSelectInline:focus {
+      outline: none;
+      border-color: rgba(0, 55, 100, .35);
+      box-shadow: 0 0 0 3px rgba(0, 55, 100, .12);
+    }
+
+    /* ── Invite panel: role checkbox row ── */
+    .inviteRoleRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 0 0 0;
+    }
+
+    .inviteRoleRow label {
+      margin: 0;
+      font-size: 14px;
+      color: #111827;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    select:disabled {
+      background: #f3f4f6;
+      color: #9ca3af;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    /* ── User-exists modal ── */
+    .modalOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modalOverlay[hidden] { display: none !important; }
+
+    .modalBackdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+    }
+
+    .modalPanel {
+      position: relative;
+      background: var(--card, #fff);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.22);
+      max-width: 440px;
+      width: calc(100vw - 32px);
+      z-index: 1;
+    }
+
+    .modalPanel--sm { max-width: 380px; }
+
+    .modalTop {
+      padding: 14px 18px;
+      border-radius: 18px 18px 0 0;
+    }
+
+    .panelTitle {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .modalBody {
+      padding: 18px;
+    }
+
+    .modalFooter {
+      padding: 0 18px 18px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    @media (max-width: 1100px) {
+      .customerAdminGrid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .choiceGrid {
+        grid-template-columns: 1fr;
+      }
+
+      .orSep {
+        justify-content: flex-start;
+        padding-left: 4px;
+      }
+    }
+
+    /* ── Sortable table headers ── */
+    .adminSortTh { cursor: pointer; user-select: none; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; }
+    .adminSortTh:hover { color: #111827; }
+    .adminSortTh.sorted { color: var(--accent, #3b82f6); }
+    .adminSortArrow { display: inline-block; margin-left: 4px; font-size: 10px; opacity: 1; }
+    .adminSortArrow.inactive { opacity: 0.3; }
+
+    /* ── Edit toggle ── */
+    .editToggleBtn {
+      padding: 3px 10px; border-radius: 8px;
+      border: 1.5px solid #003764; background: #fff; color: #003764;
+      font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .editToggleBtn:hover { background: #f0f4f8; }
+    .cancelEditBtn {
+      padding: 3px 8px; border-radius: 8px;
+      border: 1.5px solid #9ca3af; background: #fff; color: #6b7280;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .cancelEditBtn:hover { background: #f9fafb; }
+    .editBtnWrap { display: flex; gap: 5px; align-items: center; }
+
+    /* ── Inline edit inputs ── */
+    .editInput, .editSelect {
+      padding: 5px 8px; border: 1.5px solid #003764; border-radius: 7px;
+      font: 500 13px "Rubik", system-ui, sans-serif;
+      width: 100%; min-width: 80px; box-sizing: border-box; background: #fff;
+    }
+    .editInput:focus, .editSelect:focus {
+      outline: none; box-shadow: 0 0 0 3px rgba(0,55,100,.12);
+    }
+
+    /* ── Pending changes bar ── */
+    .pendingChangesBar {
+      position: sticky; top: 0; z-index: 500;
+      background: #003764; color: #fff;
+      padding: 10px 18px; display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      border-radius: 12px; box-shadow: 0 4px 16px rgba(0,55,100,.3);
+    }
+    .pendingChangesBar.hidden { display: none !important; }
+    .pendingMsg { font-size: 13px; font-weight: 600; }
+    .pendingActions { display: flex; gap: 8px; }
+    .pendingActions .btn { font-size: 13px; padding: 7px 14px; }
+
+    #saveConfirmModal .modalPanel { height: auto; }
+    #saveConfirmModal .modalFooter { border-top: none; }
+
+    /* ── Toggle switch ── */
+    .toggleSwitch { position: relative; display: inline-block; width: 36px; height: 20px; cursor: pointer; }
+    .toggleSwitch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggleSlider {
+      position: absolute; inset: 0; background: #d1d5db;
+      border-radius: 20px; transition: background 0.2s;
+    }
+    .toggleSlider::before {
+      content: ''; position: absolute;
+      width: 14px; height: 14px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .toggleSwitch input:checked + .toggleSlider { background: #003764; }
+    .toggleSwitch input:checked + .toggleSlider::before { transform: translateX(16px); }
+
+    /* ── Pending subsection labels ── */
+    .pendingSubLabel {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #6b7280;
+      padding: 6px 14px 6px;
+      background-color: #ebebeb;
+    }
+    .pendingSubLabel + .adminTableWrap { border-top: 1px solid var(--line, #e5e7eb); }
+    .pendingSubLabel:not(:first-child) { border-top: 1px solid var(--line, #e5e7eb); margin-top: 8px; }
+
+    /* ── Aligned pending tables ── */
+    .pendingTable { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .pendingTable th, .pendingTable td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line, #e5e7eb); vertical-align: top; font-size: 13px; }
+    .pendingTable th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray, #878787); user-select: none; }
+    .pendingTable colgroup col:nth-child(1) { width: 70px; }
+    .pendingTable colgroup col:nth-child(2) { }
+    .pendingTable colgroup col:nth-child(3) { width: 190px; }
+    .pendingTable colgroup col:nth-child(4) { width: 130px; }
+    .pendingTable colgroup col:nth-child(5) { width: 160px; }
+
+    /* ── Customer expanded row ── */
+    .customerRow { cursor: pointer; }
+    .customerRow:hover { background: var(--row-hover, #f1f5f9); }
+    .customerRow.expanded { background: #eff6ff; }
+    .customerRow.expanded td { color: var(--blue, #003764); }
+    .customerExpandedRow td { padding: 0 !important; background: #f8fafc; border-bottom: 1px solid var(--line, #e5e7eb); }
+    .customerExpandedInner { padding: 12px 16px; }
+    .catalogOrdersTable { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .catalogOrdersTable th { text-align: left; padding: 6px 10px; background: #f1f5f9; border-bottom: 1px solid #e5e7eb; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7280; }
+    .catalogOrdersTable td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .catalogOrdersTable tr:last-child td { border-bottom: none; }
+    .catalogGoWrap { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+    .catalogGoBtn { background: none; border: none; cursor: pointer; color: #003764; font-size: 14px; padding: 0 4px; line-height: 1; border-radius: 4px; }
+    .catalogGoBtn:hover { background: #e0e7ef; }
+    .catalogGoBubble { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 6px; background: #003764; color: #fff; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 8px; white-space: nowrap; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,55,100,.25); }
+    .catalogGoBubble::before { content: ''; position: absolute; right: 100%; top: 50%; transform: translateY(-50%); border: 5px solid transparent; border-right-color: #003764; }
+    .catalogGoBubble.hidden { display: none; }
+    .orderReqChip { display: inline-block; padding: 3px 8px; border-radius: 6px; background: #e0e7ef; color: #003764; font-size: 11px; font-weight: 600; cursor: pointer; margin: 2px; transition: background 0.12s; }
+    .orderReqChip:hover { background: #bfdbfe; }
+    .expandLoading { color: #9ca3af; font-size: 12px; padding: 8px 0; }
+
+    /* ── Vehicle add-line placeholder row ── */
+    .vehicleAddRow td { text-align: center; color: #9ca3af; font-style: italic; cursor: pointer; padding: 10px; border-bottom: 1px dashed #e5e7eb; font-size: 13px; }
+    .vehicleAddRow:hover td { background: #f9fafb; color: #6b7280; }
+
+    /* ── Order request popup ── */
+    #orderReqPopup .modalPanel { height: auto; max-width: min(700px, 90vw); }
+    #orderReqPopup .modalFooter { border-top: none; }
+    #orderReqPopup pre { margin: 0; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; line-height: 1.6; color: #111827; }
+
+    /* ── Right-aligned actions ── */
+    .actionsRight { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: flex-end; margin-top: 12px; }
+
+    /* ── Caps for static th ── */
+    th { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem !important; }
+  </style>
+  <script src="user-badge.js"></script>
+  <script src="toast.js"></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="assets/logo.svg" alt="CATÁLOGO" class="brandLogo">
+    </div>
+
+    <div class="crumbs"></div>
+
+    <nav class="navTabs">
+      <button class="navTab" id="navECatalog"   style="display:none" type="button">eCatalog</button>
+      <button class="navTab" id="navClientArea" style="display:none" type="button">Client Area</button>
+      <button class="navTab" id="navAdminArea"  style="display:none" type="button">Admin Area</button>
+      <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
+    </nav>
+
+    <div class="navDivider"></div>
+    <span id="whoami" style="display:none"></span>
+    <div class="userBadge" id="userBadge" style="display:none"></div>
+    <div class="navDivider"></div>
+    <button class="clientBtn btn-signout" id="btnLogout" type="button">Sign out</button>
+  </header>
+
+  <main class="layoutAdmin">
+
+    <!-- ── Pending changes bar ── -->
+    <div id="pendingChangesBar" class="pendingChangesBar hidden">
+      <span class="pendingMsg" id="pendingChangesMsg">0 unsaved changes</span>
+      <div class="pendingActions">
+        <button class="btn" id="btnDiscardChanges" type="button">Discard all</button>
+        <button class="btn primary" id="btnSaveChanges" type="button">Save all changes</button>
+      </div>
+    </div>
+
+    <!-- ── INVITE NEW USER ─────────────────────────────────── -->
+    <section class="adminPanel" id="invitePanel">
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Invite new user</div>
+      </div>
+
+      <div class="adminPanelBody">
+
+        <!-- Row: email + role checkbox + role selector -->
+        <div class="row" style="align-items:stretch;">
+          <div class="field">
+            <label for="inviteEmail">User email</label>
+            <input id="inviteEmail" type="email" placeholder="user@example.com" autocomplete="off" />
+          </div>
+
+          <div class="field" style="min-width:auto;flex:0 0 auto;display:flex;align-items:center;padding-top:22px;">
+            <div class="inviteRoleRow" style="padding-top:0;">
+              <input type="checkbox" id="inviteRoleCheck" />
+              <label for="inviteRoleCheck">Assign a role?</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="inviteRoleSelect">Role</label>
+            <select id="inviteRoleSelect" disabled>
+              <option value="">— select role —</option>
+              <option value="client_manager">Client Manager</option>
+              <option value="catalog_manager">Catalog Manager</option>
+              <option value="internal">Internal</option>
+              <option value="customer">Customer</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Customer assignment (shown only when role = customer) -->
+        <div id="inviteCustomerSection" class="hidden" style="margin-top:16px;">
+          <div class="choiceGrid">
+            <!-- Use existing -->
+            <div id="inviteExistingChoiceCard" class="choiceCard">
+              <div class="choiceTitle">Assign an existing customer to this user:</div>
+              <div class="field">
+                <label>Search customer</label>
+                <div class="customerSuggestWrap">
+                  <input id="inviteCustomersSelect" class="pickerInput" type="text"
+                    placeholder="Search customer…" autocomplete="off" />
+                  <span class="pickerCaret">▼</span>
+                  <div id="inviteCustomerDropdown" class="pickerDropdown"></div>
+                </div>
+                <div class="small" style="margin-top:6px;">Search and select an existing customer.</div>
+              </div>
+            </div>
+
+            <div class="orSep">OR</div>
+
+            <!-- Create new -->
+            <div id="inviteNewChoiceCard" class="choiceCard">
+              <div class="choiceTitle">Create a new customer to assign to this user:</div>
+              <div class="row">
+                <div class="field">
+                  <label>New customer name</label>
+                  <input id="inviteNewCustomerName" type="text" placeholder="Customer name…" autocomplete="off" />
+                </div>
+
+                <div class="field">
+                  <label>Country <span class="small">(required)</span></label>
+                  <div class="pickerWrap">
+                    <input id="inviteCountrySearch" class="pickerInput" type="text"
+                      placeholder="Select country…" autocomplete="off" disabled />
+                    <span class="pickerCaret">▼</span>
+                    <div id="inviteCountryDropdown" class="pickerDropdown"></div>
+                  </div>
+                  <div class="small" style="margin-top:6px;">Type to search by code or country name.</div>
+                </div>
+
+                <div class="field field-wide">
+                  <label>Notes <span class="small">(optional)</span></label>
+                  <textarea id="inviteCustomerNotes" placeholder="Internal notes…" disabled></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="actionsRight">
+            <button class="btn" id="btnClearInviteCustomer" type="button">Clear customer choice</button>
+          </div>
+        </div>
+
+        <!-- Bottom actions -->
+        <div class="actionsRight" style="margin-top:16px;">
+          <button class="btn" id="btnClearInvite" type="button">Clear</button>
+          <button class="btn primary" id="btnSendInvite" type="button">Send invitation</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── PENDING SIGN UP REQUESTS ──────────────────────────── -->
+    <section class="adminPanel" data-panel-pending>
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Pending sign up requests</div>
+      </div>
+
+      <div id="pendingDecisionPanel" class="hidden adminPanelBody">
+        <div class="adminSub">To approve a pending user, choose <strong>one</strong> option only:</div>
+
+          <div class="choiceGrid">
+            <div id="existingChoiceCard" class="choiceCard">
+              <div class="choiceTitle">Use existing customer</div>
+
+              <div class="field">
+                <label>Customers</label>
+                <div class="customerSuggestWrap">
+                  <input id="customersSelect" class="pickerInput" type="text" placeholder="Search customer…"
+                    autocomplete="off" />
+                  <span class="pickerCaret">▼</span>
+                  <div id="customerSuggestDropdownPending" class="pickerDropdown"></div>
+                </div>
+                <div class="small" style="margin-top:6px;">Search and select an existing customer already in the system.</div>
+              </div>
+            </div>
+
+            <div class="orSep">OR</div>
+
+            <div id="newChoiceCard" class="choiceCard">
+              <div class="choiceTitle">Create new customer</div>
+
+              <div class="row">
+                <div class="field">
+                  <label>New customer name</label>
+                  <input id="newCustomerNamePending" type="text" placeholder="Create new customer…" />
+                </div>
+
+                <div class="field">
+                  <label>Country <span class="small">(required)</span></label>
+                  <div class="pickerWrap">
+                    <input id="countrySearchPending" class="pickerInput" type="text" placeholder="Select country…"
+                      autocomplete="off" disabled />
+                    <span class="pickerCaret">▼</span>
+                    <div id="countryDropdownPending" class="pickerDropdown"></div>
+                  </div>
+                  <div class="small" style="margin-top:6px;">Type to search by code or country name.</div>
+                </div>
+
+                <div class="field field-wide">
+                  <label>Notes <span class="small">(optional)</span></label>
+                  <textarea id="customerNotesPending" placeholder="Internal notes…" disabled></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn" id="btnClearPendingChoice" type="button">Clear pending approval choice</button>
+          </div>
+      </div>
+
+      <!-- Client users subsection -->
+      <div class="pendingSubLabel">Client users</div>
+      <div class="adminTableWrap">
+        <table class="pendingTable">
+          <colgroup>
+            <col style="width:70px">
+            <col>
+            <col style="width:190px">
+            <col style="width:130px">
+            <col style="width:160px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>User</th>
+              <th>Requested company</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="pendingTbody">
+            <tr><td colspan="5">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Internal users subsection -->
+      <div class="pendingSubLabel">Internal users</div>
+      <div class="adminTableWrap">
+        <table class="pendingTable">
+          <colgroup>
+            <col style="width:70px">
+            <col>
+            <col style="width:190px">
+            <col style="width:130px">
+            <col style="width:160px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>User</th>
+              <th>Requested role</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="pendingInternalTbody">
+            <tr><td colspan="5">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── ACTIVE USERS ────────────────────────────────────── -->
+    <section class="adminPanel" data-panel-active>
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Active Users</div>
+      </div>
+
+      <div class="adminTableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="adminSortTh" data-table="users" data-key="display_name">User <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="users" data-key="email">Email <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="users" data-key="role">Role <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="users" data-key="customer_label">Customer <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="users" data-key="created_at">Created <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="users" data-key="approved_at">Approved <span class="adminSortArrow inactive">↓</span></th>
+              <th>User ID</th>
+              <th id="activeUsersEditColHeader" style="display:none">Edit</th>
+            </tr>
+          </thead>
+          <tbody id="activeTbody">
+            <tr><td colspan="8">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── VEHICLES ─────────────────────────────────────────── -->
+    <section class="adminPanel">
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Vehicles</div>
+      </div>
+      <div class="adminTableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="adminSortTh" data-table="vehicles" data-key="pep_code">PEP Code <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="vehicles" data-key="model">Model <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="vehicles" data-key="production_year">Year <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="vehicles" data-key="vin">VIN <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="vehicles" data-key="cobus_bus_no">Bus No. <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="vehicles" data-key="motor_no">Motor No. <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="vehicles" data-key="customer_name">Customer <span class="adminSortArrow inactive">↕</span></th>
+              <th id="vehiclesEditColHeader" style="display:none">Edit</th>
+            </tr>
+          </thead>
+          <tbody id="vehiclesTbody">
+            <tr><td colspan="8">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── Load new vehicles subpanel ── -->
+      <div class="adminPanelTop" style="border-radius:0;border-top:1px solid rgba(255,255,255,.2);">
+        <div class="panelTitleAdmin">Load new vehicles</div>
+      </div>
+      <div class="adminPanelBody">
+        <div class="actions" style="margin-bottom:14px;">
+          <button class="btn" id="btnLoadVehiclesCsv" type="button">Load vehicles from CSV</button>
+          <input id="vehiclesCsvInput" type="file" accept=".csv" style="display:none" />
+          <a class="btn" href="assets/vehicles-template.csv" download>Download CSV template</a>
+          <button class="btn btn-danger" id="btnClearVehicles" type="button">Clear vehicles</button>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table id="vehiclesInputTable" style="min-width:900px;">
+            <thead>
+              <tr>
+                <th>PEP Code</th>
+                <th>Model</th>
+                <th>Year</th>
+                <th>VIN</th>
+                <th>Bus No.</th>
+                <th>Motor No.</th>
+                <th>Customer</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="vehiclesInputTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="actionsRight" style="margin-top:14px;">
+          <button class="btn primary" id="btnAddVehiclesToDb" type="button">Add these vehicles to database</button>
+        </div>
+      </div>
+    </section>
+
+  <!-- ── Customer assignment modal ── -->
+  <div id="vehicleCustomerModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="vehicleCustomerBackdrop"></div>
+    <div class="modalPanel" role="dialog" aria-modal="true" style="max-width:560px;">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Assign customers to vehicles</div>
+      </div>
+      <div class="modalBody" style="max-height:60vh;overflow-y:auto;">
+        <p style="font-size:13px;color:#6b7280;margin:0 0 14px;">
+          The following vehicles have no customer assigned. Select a customer for each, or use "Assign all" to apply the same customer to all.
+        </p>
+        <div style="margin-bottom:14px;display:flex;gap:10px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label style="font-size:12px;font-weight:600;color:var(--gray);">Assign same customer to all</label>
+            <select id="vehicleCustomerAssignAll" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font:500 13px 'Rubik',sans-serif;">
+              <option value="">— select customer —</option>
+            </select>
+          </div>
+          <button class="btn primary" id="btnAssignAllCustomer" type="button" style="white-space:nowrap;">Assign all</button>
+        </div>
+        <table style="width:100%;">
+          <thead>
+            <tr>
+              <th style="font-size:12px;color:var(--gray);font-weight:700;padding:8px;">Vehicle (PEP / VIN)</th>
+              <th style="font-size:12px;color:var(--gray);font-weight:700;padding:8px;">Customer</th>
+            </tr>
+          </thead>
+          <tbody id="vehicleCustomerModalTbody"></tbody>
+        </table>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnVehicleCustomerCancel" type="button">Cancel</button>
+        <button class="btn primary" id="btnVehicleCustomerConfirm" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Confirm add vehicles modal ── -->
+  <div id="vehicleConfirmModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="vehicleConfirmBackdrop"></div>
+    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Confirm</div>
+      </div>
+      <div class="modalBody">
+        <p id="vehicleConfirmMessage" style="margin:0;font-size:14px;line-height:1.65;"></p>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnVehicleConfirmCancel" type="button">Cancel</button>
+        <button class="btn primary" id="btnVehicleConfirmYes" type="button">Yes, add</button>
+      </div>
+    </div>
+  </div>
+
+        <!-- ── CUSTOMERS ───────────────────────────────────────── -->
+    <!-- ── CREATE CUSTOMER ── -->
+    <section class="adminPanel">
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Create Customer</div>
+      </div>
+      <div class="adminPanelBody">
+        <div class="row" style="margin-top:4px;">
+          <div class="field">
+            <label>Customer name <span class="small">(required)</span></label>
+            <input id="newCustomerNameStandalone" type="text" placeholder="Customer name…" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label>Country <span class="small">(required)</span></label>
+            <div class="pickerWrap">
+              <input id="countrySearchStandalone" class="pickerInput" type="text" placeholder="Select country…" autocomplete="off" />
+              <span class="pickerCaret">▼</span>
+              <div id="countryDropdownStandalone" class="pickerDropdown"></div>
+            </div>
+            <div class="small" style="margin-top:6px;">Type to search by code or country name.</div>
+          </div>
+          <div class="field field-wide">
+            <label>Notes <span class="small">(optional)</span></label>
+            <textarea id="customerNotesStandalone" placeholder="Internal notes…"></textarea>
+          </div>
+        </div>
+        <div class="actionsRight">
+          <button class="btn" id="btnClearStandaloneCustomer" type="button">Clear</button>
+          <button class="btn primary" id="btnCreateStandaloneCustomer" type="button">Create customer</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CUSTOMERS TABLE ── -->
+    <section class="adminPanel">
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Customers</div>
+      </div>
+      <div class="adminTableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="adminSortTh" data-table="customers" data-key="name">Name <span class="adminSortArrow">↑</span></th>
+              <th class="adminSortTh" data-table="customers" data-key="code">Code <span class="adminSortArrow inactive">↕</span></th>
+              <th class="adminSortTh" data-table="customers" data-key="country">Country <span class="adminSortArrow inactive">↕</span></th>
+              <th>Notes</th>
+              <th id="customersEditColHeader" style="display:none">Edit</th>
+            </tr>
+          </thead>
+          <tbody id="customersTbody">
+            <tr><td colspan="4">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- ── Save confirmation modal ── -->
+  <div id="saveConfirmModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="saveConfirmBackdrop"></div>
+    <div class="modalPanel" role="dialog" aria-modal="true" style="max-width:560px;">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Confirm changes</div>
+      </div>
+      <div class="modalBody" id="saveConfirmBody" style="max-height:60vh;overflow-y:auto;"></div>
+      <div class="modalFooter">
+        <button class="btn" id="btnSaveConfirmCancel" type="button">Cancel</button>
+        <button class="btn primary" id="btnSaveConfirmYes" type="button">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function _escHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+    async function openCatalogPicker(role) {
+      const modal = document.getElementById('catalogPickerModal');
+      if (!modal) return;
+      if (!modal._listenersAdded) {
+        modal._listenersAdded = true;
+        document.getElementById('btnCatalogPickerClose')?.addEventListener('click', () => { modal.hidden = true; });
+        document.getElementById('catalogPickerBackdrop')?.addEventListener('click', () => { modal.hidden = true; });
+      }
+      modal.hidden = false;
+      const listEl = document.getElementById('catalogPickerList');
+      listEl.innerHTML = '<div class="catPickerLoading">Loading…</div>';
+      const isDraftVisible = ['admin','catalog_manager'].includes(role);
+      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft','archived'] : ['published']).order('name');
+      if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
+      const showStatus = isDraftVisible;
+      const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;
+      const tbody = cats.map(c=>`<tr class="catPickerRow" data-pai="${_escHtml(c.pai_code)}"><td style="font-weight:600">${_escHtml(c.name)}</td><td><code style="font-size:12px">${_escHtml(c.pai_code)}</code></td><td style="color:#6b7280">${_escHtml(c.description||'—')}</td>${showStatus?`<td><span class="catStatusBadge--${c.status}">${c.status}</span></td>`:''}</tr>`).join('');
+      listEl.innerHTML = `<table class="catPickerTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+      listEl.querySelectorAll('.catPickerRow').forEach(tr=>tr.addEventListener('click',()=>{ window.location.href=`interactive-catalog.html?catalog=${encodeURIComponent(tr.dataset.pai)}`; }));
+    }
+    function setupNavTabs(role, currentPage) {
+      const TABS = [
+        {id:'navECatalog',  key:'ecatalog',  roles:null, href:null},
+        {id:'navClientArea',key:'clientarea',roles:null, href:'client-area.html'},
+        {id:'navAdminArea', key:'adminarea', roles:['admin','client_manager','catalog_manager'], href:'admin-approval.html'},
+        {id:'navCatalogMgr',key:'catalogmgr',roles:['admin','catalog_manager'], href:'catalog-manager.html'},
+      ];
+      for (const tab of TABS) {
+        const el = document.getElementById(tab.id); if (!el) continue;
+        const visible = !tab.roles || tab.roles.includes(role);
+        el.style.display = visible ? '' : 'none';
+        if (tab.key === currentPage) { el.classList.add('active'); }
+        else if (visible) { el.addEventListener('click', tab.href ? ()=>window.location.href=tab.href : ()=>openCatalogPicker(role)); }
+      }
+    }
+  </script>
+
+  <!-- Catalog Picker Modal -->
+  <div id="catalogPickerModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="catalogPickerBackdrop"></div>
+    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Select a Catalog</div>
+      </div>
+      <div class="modalBody" style="padding:0;overflow:auto;">
+        <div id="catalogPickerList"></div>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnCatalogPickerClose" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── User already exists modal ─────────────────────────── -->
+  <div id="userExistsModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="userExistsBackdrop"></div>
+    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:#b91c1c;border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">User already exists</div>
+      </div>
+      <div class="modalBody">
+        <p id="userExistsMessage" style="margin:0;font-size:14px;line-height:1.65;color:#111827;"></p>
+      </div>
+      <div class="modalFooter">
+        <button class="btn primary" id="btnUserExistsDismiss" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Order request popup ── -->
+  <div id="orderReqPopup" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="orderReqPopupBackdrop"></div>
+    <div class="modalPanel" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;" id="orderReqPopupTitle">Order request</div>
+      </div>
+      <div class="modalBody" style="max-height:70vh;overflow-y:auto;">
+        <pre id="orderReqPopupContent"></pre>
+      </div>
+      <div class="modalFooter" style="border-top:none;">
+        <button class="btn primary" id="btnOrderReqPopupClose" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-approval.js"></script>
+</body>
+
+</html>

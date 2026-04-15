@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <style>html { visibility: hidden; }</style>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catalog Manager – Cobus Digital Parts Catalog</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="auth-guard.js"></script>
+
+  <script>
+    (function () {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = 'styles.css?v=' + Date.now();
+      document.head.appendChild(l);
+    })();
+  </script>
+
+  <style>
+    /* ── Layout ───────────────────────────────────────────── */
+    body {
+      margin: 0;
+      font-family: "Rubik", system-ui, sans-serif;
+      background: var(--bg, #87878766);
+      color: #111827;
+    }
+
+    .cmLayout {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 18px 48px;
+    }
+
+    /* ── Tabs ─────────────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--blue);
+      margin-bottom: 24px;
+    }
+
+    .tabBtn {
+      padding: 10px 24px;
+      border: none;
+      background: transparent;
+      font: 700 13px "Rubik", sans-serif;
+      color: var(--gray, #878787);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s, border-color .15s;
+      letter-spacing: .02em;
+    }
+
+    .tabBtn:hover { color: var(--blue); }
+
+    .tabBtn.active {
+      color: var(--blue);
+      border-bottom-color: var(--blue);
+    }
+
+    .tabPanel { display: none; }
+    .tabPanel.active { display: block; }
+
+    /* ── Card / Panel ─────────────────────────────────────── */
+    .cmCard {
+      background: var(--card, #fff);
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: var(--radius, 14px);
+      box-shadow: var(--shadow, 0 10px 25px rgba(0,0,0,.08));
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .cmSectionTitle {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin: 0 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    /* ── Form fields ──────────────────────────────────────── */
+    .fieldGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .fieldGrid.single { grid-template-columns: 1fr; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gray);
+    }
+
+    .field label .req { color: #b91c1c; margin-left: 2px; }
+    .field label .opt { color: var(--gray2, #9ca3af); font-weight: 400; margin-left: 4px; }
+
+    .field input,
+    .field textarea,
+    .field select {
+      padding: 10px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      font: 500 14px "Rubik", sans-serif;
+      background: #fff;
+      color: #111827;
+      transition: border-color .15s, box-shadow .15s;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      outline: none;
+      border-color: rgba(0,55,100,.4);
+      box-shadow: 0 0 0 3px rgba(0,55,100,.1);
+    }
+
+    .field textarea { min-height: 80px; resize: vertical; }
+
+    .field input:disabled,
+    .field select:disabled {
+      background: #f3f4f6;
+      color: var(--gray);
+      cursor: not-allowed;
+      opacity: .7;
+    }
+
+    /* ── Kind selector ────────────────────────────────────── */
+    .kindWrap { position: relative; }
+    .kindWrap select { appearance: none; padding-right: 32px; }
+    .kindBadge {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: var(--gray);
+      pointer-events: none;
+    }
+
+    /* ── File section ─────────────────────────────────────── */
+    .fileSection {
+      background: rgba(0,55,100,.03);
+      border: 1.5px dashed rgba(0,55,100,.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .fileSectionTitle {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--blue);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin: 0 0 14px;
+    }
+
+    .fileInput {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .fileInput label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gray);
+    }
+
+    .fileInput input[type="file"] {
+      font: 13px "Rubik", sans-serif;
+      color: #111827;
+      padding: 8px 10px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .fileInput input[type="file"]:focus {
+      outline: none;
+      border-color: rgba(0,55,100,.4);
+      box-shadow: 0 0 0 3px rgba(0,55,100,.1);
+    }
+
+    .fileHint {
+      font-size: 11px;
+      color: var(--gray2);
+      margin-top: 3px;
+    }
+
+    /* ── Vehicles table ───────────────────────────────────── */
+    .vehiclesNote {
+      font-size: 13px;
+      color: var(--gray);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .vehiclesNote a {
+      color: var(--blue);
+      font-weight: 600;
+    }
+
+    .vehicleFilters {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .vehicleFilters input {
+      padding: 7px 10px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      font: 13px "Rubik", sans-serif;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .vehicleFilters input:focus {
+      outline: none;
+      border-color: rgba(0,55,100,.4);
+      box-shadow: 0 0 0 3px rgba(0,55,100,.1);
+    }
+
+    .vehicleTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .vehicleTable th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--blue);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .vehicleTable th:hover { color: var(--blue); }
+    .vehicleTable th .sortArrow { margin-left: 4px; opacity: .5; font-size: 10px; }
+    .vehicleTable th.sorted .sortArrow { opacity: 1; color: var(--blue); }
+
+    .vehicleTable td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+
+    .vehicleTable tr:hover td { background: rgba(0,55,100,.02); }
+
+    .vehicleTable input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--blue);
+    }
+
+    .vehicleTableWrap {
+      max-height: 320px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .selectAllRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray);
+    }
+
+    .selectAllRow input { accent-color: var(--blue); }
+
+    /* ── Submit button ────────────────────────────────────── */
+    .submitRow {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    .btnSubmit {
+      padding: 12px 28px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font: 700 14px "Rubik", sans-serif;
+      cursor: pointer;
+      letter-spacing: .04em;
+      transition: filter .15s, transform .12s;
+      box-shadow: 0 4px 14px rgba(0,55,100,.25);
+    }
+
+    .btnSubmit:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btnSubmit:active { transform: translateY(1px); }
+    .btnSubmit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    /* ── Modal (confirm + error) ──────────────────────────── */
+    .cmModalOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cmModalBackdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(17,24,39,.55);
+    }
+
+    .cmModalBox {
+      position: relative;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.22);
+      padding: 28px 32px;
+      max-width: 480px;
+      width: calc(100% - 48px);
+    }
+
+    .cmModalTitle {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--blue);
+      margin: 0 0 12px;
+    }
+
+    .cmModalBody {
+      font-size: 14px;
+      color: #374151;
+      line-height: 1.55;
+      margin-bottom: 20px;
+    }
+
+    .cmModalBody ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .cmModalBody li { margin-bottom: 4px; }
+
+    .cmModalFooter {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* ── Progress ─────────────────────────────────────────── */
+    .progressWrap {
+      margin-top: 16px;
+      display: none;
+    }
+
+    .progressLabel {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray);
+      margin-bottom: 6px;
+    }
+
+    .progressBar {
+      height: 6px;
+      background: var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progressFill {
+      height: 100%;
+      background: var(--blue);
+      border-radius: 999px;
+      width: 0%;
+      transition: width .3s ease;
+    }
+
+    .progressStep {
+      font-size: 11px;
+      color: var(--gray2);
+      margin-top: 4px;
+    }
+
+    /* ── Coming soon ──────────────────────────────────────── */
+    .comingSoon {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--gray);
+    }
+
+    .comingSoon .icon { font-size: 40px; margin-bottom: 16px; }
+    .comingSoon h3 { font-size: 16px; font-weight: 700; color: var(--blue); margin: 0 0 8px; }
+    .comingSoon p { font-size: 13px; margin: 0; }
+
+    @media (max-width: 680px) {
+      .fieldGrid { grid-template-columns: 1fr; }
+      .vehicleFilters { grid-template-columns: 1fr 1fr; }
+      .catFilters { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── Catalog picker table ─────────────────────────────────────────────── */
+    .catTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .catTable th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--blue);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .catTable th:hover { color: var(--blue); }
+    .catTable th .sortArrow { margin-left: 4px; opacity: .5; font-size: 10px; }
+    .catTable th.sorted .sortArrow { opacity: 1; color: var(--blue); }
+
+    .catTable td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+
+    .catTable tr.catRow { cursor: pointer; transition: background .1s; }
+    .catTable tr.catRow:hover td { background: rgba(0,55,100,.04); }
+    .catTable tr.catRow.selected td { background: rgba(0,55,100,.08); }
+
+    .catTableWrap {
+      max-height: 340px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    /* ── Status badges ────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .badge--published { background: #d1fae5; color: #065f46; }
+    .badge--draft     { background: #fef3c7; color: #92400e; }
+    .badge--archived  { background: #f3f4f6; color: #6b7280; }
+
+    /* ── Filter row above catalog table ──────────────────────────────────── */
+    .catFilters {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .catFilters input,
+    .catFilters select {
+      padding: 7px 10px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      font: 13px "Rubik", sans-serif;
+      width: 100%;
+      box-sizing: border-box;
+      background: #fff;
+      color: #111827;
+    }
+
+    .catFilters input:focus,
+    .catFilters select:focus {
+      outline: none;
+      border-color: rgba(0,55,100,.4);
+      box-shadow: 0 0 0 3px rgba(0,55,100,.1);
+    }
+
+    /* ── Selected catalog info banner ────────────────────────────────────── */
+    .selectedCatBanner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(0,55,100,.05);
+      border: 1.5px solid rgba(0,55,100,.15);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+
+    .selectedCatBanner .catBannerName {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--blue);
+      flex: 1;
+    }
+
+    .selectedCatBanner .catBannerMeta {
+      font-size: 12px;
+      color: var(--gray);
+    }
+
+    .btnClearSel {
+      background: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 5px 12px;
+      font: 600 12px "Rubik", sans-serif;
+      color: var(--gray);
+      cursor: pointer;
+      transition: border-color .12s, color .12s;
+      white-space: nowrap;
+    }
+    .btnClearSel:hover { border-color: #b91c1c; color: #b91c1c; }
+
+    /* ── Change note textarea ─────────────────────────────────────────────── */
+    #uChangeNote { min-height: 60px; resize: vertical; }
+
+    /* ── Update submit row ────────────────────────────────────────────────── */
+    #updateSubmitRow {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    /* ── Change log display ───────────────────────────────────────────────── */
+    .changeLogWrap {
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .changeLogEntry {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 6px 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
+
+    .changeLogEntry:last-child { border-bottom: none; }
+
+    .clTs   { color: var(--gray2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .clUser { font-weight: 600; color: var(--blue); }
+    .clFields { color: #374151; }
+    .clNote { color: var(--gray); font-style: italic; }
+    .clEmpty { padding: 16px; color: var(--gray2); font-size: 13px; text-align: center; }
+  </style>
+  <script src="user-badge.js"></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a href="interactive-catalog.html" title="Back to catalog">
+        <img src="assets/logo.svg" alt="CATÁLOGO" class="brandLogo">
+      </a>
+    </div>
+
+    <div class="crumbs"></div>
+
+    <nav class="navTabs">
+      <button class="navTab" id="navECatalog"   style="display:none" type="button">eCatalog</button>
+      <button class="navTab" id="navClientArea" style="display:none" type="button">Client Area</button>
+      <button class="navTab" id="navAdminArea"  style="display:none" type="button">Admin Area</button>
+      <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
+    </nav>
+
+    <div class="navDivider"></div>
+    <div class="userBadge" id="userBadge" style="display:none"></div>
+    <div class="navDivider"></div>
+    <button class="clientBtn btn-signout" id="btnLogout" type="button">Sign out</button>
+  </header>
+
+  <main class="cmLayout">
+    <div class="tabs">
+      <button class="tabBtn active" data-tab="create">Create New Catalog</button>
+      <button class="tabBtn" data-tab="update">Update Existing Catalog</button>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         TAB: CREATE
+    ══════════════════════════════════════════ -->
+    <div class="tabPanel active" id="tab-create">
+
+      <!-- Metadata -->
+      <div class="cmCard">
+        <div class="cmSectionTitle">Catalog Information</div>
+        <div class="fieldGrid">
+          <div class="field">
+            <label>PAI Code <span class="req">*</span></label>
+            <input type="text" id="fPaiCode" placeholder="e.g. 50021302" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="field">
+            <label>Name <span class="req">*</span></label>
+            <input type="text" id="fName" placeholder="e.g. eCobus 3002 Chassis" autocomplete="off" />
+          </div>
+        </div>
+        <div class="fieldGrid single" style="margin-top:14px;">
+          <div class="field">
+            <label>Description <span class="opt">(optional)</span></label>
+            <textarea id="fDescription" placeholder="Brief description of this catalog…"></textarea>
+          </div>
+        </div>
+        <div class="fieldGrid" style="margin-top:14px;">
+          <div class="field">
+            <label>Kind <span class="req">*</span></label>
+            <div class="kindWrap">
+              <select id="fKind" disabled>
+                <option value="interactive">Interactive</option>
+                <option value="static">Static</option>
+              </select>
+              <span class="kindBadge">COMING SOON FOR STATIC</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="fStatus">
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files -->
+      <div class="fileSection">
+        <div class="fileSectionTitle">Files to Upload</div>
+
+        <div style="display:grid; gap:16px;">
+          <div class="fileInput">
+            <label>Parent Assembly SVG <span class="req" style="color:#b91c1c;">*</span></label>
+            <input type="file" id="fParentSvg" accept=".svg" />
+            <div class="fileHint">File must be named <code>pai_{PAI code}.svg</code></div>
+          </div>
+
+          <div class="fileInput">
+            <label>Subassemblies — SVG <span style="color:var(--gray2); font-weight:400;">(optional, multiple)</span></label>
+            <input type="file" id="fSubSvgs" accept=".svg" multiple />
+            <div class="fileHint">Only SVG files accepted.</div>
+          </div>
+
+          <div class="fileInput">
+            <label>Thumbnails — JPEG or PNG <span style="color:var(--gray2); font-weight:400;">(optional, multiple)</span></label>
+            <input type="file" id="fThumbs" accept=".jpg,.jpeg,.png" multiple />
+            <div class="fileHint">File names must follow the pattern <code>thumb_{code}.jpg/png</code> where <code>{code}</code> matches a subassembly SVG filename.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vehicles -->
+      <div class="cmCard">
+        <div class="cmSectionTitle">Associate Vehicles <span style="color:#b91c1c;">*</span></div>
+        <div class="vehiclesNote">
+          Select the vehicles to associate with this catalog. If the vehicle you are looking for is not listed,
+          please <a href="vehicle-registry.html">register it in the system</a> before submitting the catalog.
+        </div>
+
+        <div class="vehicleFilters">
+          <input type="text" id="filterPep" placeholder="Filter PEP code…" />
+          <input type="text" id="filterBusNo" placeholder="Filter Bus No…" />
+          <input type="text" id="filterCustomer" placeholder="Filter customer…" />
+          <input type="text" id="filterVin" placeholder="Filter VIN…" />
+        </div>
+
+        <div class="selectAllRow">
+          <input type="checkbox" id="chkSelectAll" />
+          <label for="chkSelectAll">Select / deselect all visible</label>
+          <span id="selectedCount" style="margin-left:auto; color:var(--blue); font-weight:700;"></span>
+        </div>
+
+        <div class="vehicleTableWrap">
+          <table class="vehicleTable" id="vehicleTable">
+            <thead>
+              <tr>
+                <th style="width:36px;"></th>
+                <th data-col="pep_code">PEP Code <span class="sortArrow">↕</span></th>
+                <th data-col="cobus_bus_no">Cobus Bus No. <span class="sortArrow">↕</span></th>
+                <th data-col="customer">Customer <span class="sortArrow">↕</span></th>
+                <th data-col="vin">VIN <span class="sortArrow">↕</span></th>
+              </tr>
+            </thead>
+            <tbody id="vehicleTbody">
+              <tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">Loading vehicles…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progressWrap" id="progressWrap">
+        <div class="progressLabel" id="progressLabel">Preparing…</div>
+        <div class="progressBar"><div class="progressFill" id="progressFill"></div></div>
+        <div class="progressStep" id="progressStep"></div>
+      </div>
+
+      <!-- Submit -->
+      <div class="submitRow">
+        <button class="btnSubmit" id="btnSubmit" type="button">Submit Catalog</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         TAB: UPDATE
+    ══════════════════════════════════════════ -->
+    <div class="tabPanel" id="tab-update">
+
+      <!-- 1. Select catalog -->
+      <div class="cmCard" id="updatePickerCard">
+        <div class="cmSectionTitle">Select a Catalog to Update</div>
+
+        <div class="catFilters">
+          <input type="text"   id="uFilterName"   placeholder="Filter by name…" />
+          <input type="text"   id="uFilterCode"   placeholder="Filter by PAI code…" />
+          <select id="uFilterStatus">
+            <option value="">All statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+
+        <div class="catTableWrap">
+          <table class="catTable" id="catPickerTable">
+            <thead>
+              <tr>
+                <th data-col="name">Name <span class="sortArrow">↕</span></th>
+                <th data-col="pai_code">Parent Code <span class="sortArrow">↕</span></th>
+                <th data-col="status">Status <span class="sortArrow">↕</span></th>
+                <th data-col="created_at">Created At <span class="sortArrow">↕</span></th>
+                <th data-col="author">Author <span class="sortArrow">↕</span></th>
+                <th data-col="updated_at">Updated At <span class="sortArrow">↕</span></th>
+                <th data-col="updated_by">Updated By <span class="sortArrow">↕</span></th>
+              </tr>
+            </thead>
+            <tbody id="catPickerTbody">
+              <tr><td colspan="7" style="padding:20px;text-align:center;color:var(--gray);">Click "Update Existing Catalog" to load…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. Edit form (hidden until catalog selected) -->
+      <div id="updateEditArea" style="display:none;">
+
+        <!-- Banner -->
+        <div class="selectedCatBanner">
+          <div style="flex:1">
+            <div class="catBannerName" id="uBannerName"></div>
+            <div class="catBannerMeta" id="uBannerMeta"></div>
+          </div>
+          <button class="btnClearSel" id="btnClearCatSel" type="button">Change catalog</button>
+        </div>
+
+        <!-- Editable fields -->
+        <div class="cmCard">
+          <div class="cmSectionTitle">Catalog Information</div>
+          <div class="fieldGrid">
+            <div class="field">
+              <label>PAI Code</label>
+              <input type="text" id="uPaiCode" disabled />
+            </div>
+            <div class="field">
+              <label>Name <span class="req">*</span></label>
+              <input type="text" id="uName" autocomplete="off" />
+            </div>
+          </div>
+          <div class="fieldGrid single" style="margin-top:14px;">
+            <div class="field">
+              <label>Description <span class="opt">(optional)</span></label>
+              <textarea id="uDescription" placeholder="Brief description of this catalog…"></textarea>
+            </div>
+          </div>
+          <div class="fieldGrid" style="margin-top:14px;">
+            <div class="field">
+              <label>Kind</label>
+              <input type="text" id="uKind" disabled />
+            </div>
+            <div class="field">
+              <label>Status <span class="req">*</span></label>
+              <select id="uStatus">
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Files to Upload or Replace -->
+        <div class="fileSection">
+          <div class="fileSectionTitle">Files to Upload or Replace</div>
+          <div style="display:grid; gap:16px;">
+            <div class="fileInput">
+              <label>Parent Assembly SVG <span style="color:var(--gray2); font-weight:400;">(optional)</span></label>
+              <input type="file" id="uParentSvg" accept=".svg" />
+              <div class="fileHint">File must be named <code>pai_{PAI code}.svg</code>. If a file with this name already exists it will be replaced.</div>
+            </div>
+            <div class="fileInput">
+              <label>Subassemblies — SVG <span style="color:var(--gray2); font-weight:400;">(optional, multiple)</span></label>
+              <input type="file" id="uSubSvgs" accept=".svg" multiple />
+              <div class="fileHint">Only SVG files accepted. Existing files with the same name will be replaced.</div>
+            </div>
+            <div class="fileInput">
+              <label>Thumbnails — JPEG or PNG <span style="color:var(--gray2); font-weight:400;">(optional, multiple)</span></label>
+              <input type="file" id="uThumbs" accept=".jpg,.jpeg,.png" multiple />
+              <div class="fileHint">File names must follow the pattern <code>thumb_{code}.jpg/png</code>. Existing files with the same name will be replaced.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Change note -->
+        <div class="cmCard">
+          <div class="cmSectionTitle">Change Note</div>
+          <div class="field">
+            <label>Describe what was changed <span class="req">*</span></label>
+            <textarea id="uChangeNote" placeholder="e.g. Updated description and changed status to Published…"></textarea>
+          </div>
+        </div>
+
+        <!-- Change log (read-only) -->
+        <div class="cmCard">
+          <div class="cmSectionTitle">Change Log</div>
+          <div class="changeLogWrap" id="changeLogWrap">
+            <div class="clEmpty">No changes recorded yet.</div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div id="updateSubmitRow">
+          <button class="btnSubmit" id="btnUpdateSubmit" type="button">Save Changes</button>
+        </div>
+
+      </div><!-- /updateEditArea -->
+
+    </div><!-- /tab-update -->
+  </main>
+
+  <!-- Confirm modal -->
+  <div class="cmModalOverlay" id="confirmModal" style="display:none;">
+    <div class="cmModalBackdrop"></div>
+    <div class="cmModalBox">
+      <div class="cmModalTitle">Confirm Catalog Submission</div>
+      <div class="cmModalBody" id="confirmModalBody"></div>
+      <div class="cmModalFooter">
+        <button class="btn" id="btnConfirmCancel" type="button">Cancel</button>
+        <button class="btnSubmit" id="btnConfirmOk" type="button">Yes, submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error/result modal -->
+  <div class="cmModalOverlay" id="resultModal" style="display:none;">
+    <div class="cmModalBackdrop"></div>
+    <div class="cmModalBox">
+      <div class="cmModalTitle" id="resultModalTitle"></div>
+      <div class="cmModalBody" id="resultModalBody"></div>
+      <div class="cmModalFooter">
+        <button class="btnSubmit" id="btnResultOk" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function _escHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+    async function openCatalogPicker(role) {
+      const modal = document.getElementById('catalogPickerModal');
+      if (!modal) return;
+      if (!modal._listenersAdded) {
+        modal._listenersAdded = true;
+        document.getElementById('btnCatalogPickerClose')?.addEventListener('click', () => { modal.hidden = true; });
+        document.getElementById('catalogPickerBackdrop')?.addEventListener('click', () => { modal.hidden = true; });
+      }
+      modal.hidden = false;
+      const listEl = document.getElementById('catalogPickerList');
+      listEl.innerHTML = '<div class="catPickerLoading">Loading…</div>';
+      const isDraftVisible = ['admin','catalog_manager'].includes(role);
+      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft'] : ['published']).order('name');
+      if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
+      const showStatus = isDraftVisible;
+      const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;
+      const tbody = cats.map(c=>`<tr class="catPickerRow" data-pai="${_escHtml(c.pai_code)}"><td style="font-weight:600">${_escHtml(c.name)}</td><td><code style="font-size:12px">${_escHtml(c.pai_code)}</code></td><td style="color:#6b7280">${_escHtml(c.description||'—')}</td>${showStatus?`<td><span class="catStatusBadge--${c.status}">${c.status}</span></td>`:''}</tr>`).join('');
+      listEl.innerHTML = `<table class="catPickerTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+      listEl.querySelectorAll('.catPickerRow').forEach(tr=>tr.addEventListener('click',()=>{ window.location.href=`interactive-catalog.html?catalog=${encodeURIComponent(tr.dataset.pai)}`; }));
+    }
+    function setupNavTabs(role, currentPage) {
+      const TABS = [
+        {id:'navECatalog',  key:'ecatalog',  roles:null, href:null},
+        {id:'navClientArea',key:'clientarea',roles:null, href:'client-area.html'},
+        {id:'navAdminArea', key:'adminarea', roles:['admin','client_manager','catalog_manager'], href:'admin-approval.html'},
+        {id:'navCatalogMgr',key:'catalogmgr',roles:['admin','catalog_manager'], href:'catalog-manager.html'},
+      ];
+      for (const tab of TABS) {
+        const el = document.getElementById(tab.id); if (!el) continue;
+        const visible = !tab.roles || tab.roles.includes(role);
+        el.style.display = visible ? '' : 'none';
+        if (tab.key === currentPage) { el.classList.add('active'); }
+        else if (visible) { el.addEventListener('click', tab.href ? ()=>window.location.href=tab.href : ()=>openCatalogPicker(role)); }
+      }
+    }
+  </script>
+
+  <!-- Catalog Picker Modal -->
+  <div id="catalogPickerModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="catalogPickerBackdrop"></div>
+    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Select a Catalog</div>
+      </div>
+      <div class="modalBody" style="padding:0;overflow:auto;">
+        <div id="catalogPickerList"></div>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnCatalogPickerClose" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (async () => {
+      const session = await window.requireAuth("login.html");
+      if (!session) return;
+
+      const { data: prof } = await window.sb
+        .from("profiles")
+        .select("role, status, requested_full_name, customer_id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (!prof || !["admin", "catalog_manager"].includes(prof.role)) {
+        window.location.replace("interactive-catalog.html");
+        return;
+      }
+
+      setupNavTabs(prof.role, "catalogmgr");
+      window.renderUserBadge?.(session, prof);
+
+      window.revealPage();
+
+      const v = Date.now();
+      const s = document.createElement("script");
+      s.src = "catalog-manager.js?v=" + v;
+      document.body.appendChild(s);
+
+      const logout = document.createElement("script");
+      logout.src = "logout.js?v=" + v;
+      document.body.appendChild(logout);
+    })();
+  </script>
+</body>
+</html>

@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(grep -E \"\\\\.\\(json|yaml\\)$\")",
-      "Bash(bash tools/backup_supabase.sh)"
-    ]
-  }
-}

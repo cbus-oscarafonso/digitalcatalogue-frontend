@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="pt-PT">
+
+<head>
+  <meta charset="utf-8" />
+
+  <style>
+    html {
+      visibility: hidden;
+    }
+
+    /* ── Layout override: orders fills all remaining width ──────────── */
+    .layoutClient {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: stretch !important;
+      gap: 18px;
+      padding: 18px;
+      height: calc(100vh - var(--topbar-h, 56px));
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* Orders section: grow to fill all space left by the aside */
+    .layoutClient > .mid {
+      flex: 1 1 0 !important;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Catalogs aside: fixed width, does not grow */
+    .layoutClient > .right {
+      flex: 0 0 260px;
+      min-width: 200px;
+      max-width: 300px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Admin-style panel shell ────────────────────────────────────── */
+    .adminPanel {
+      background: var(--card, #fff);
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: var(--radius, 14px);
+      box-shadow: var(--shadow, 0 10px 25px rgba(0, 0, 0, .08));
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    .adminPanelTop {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line, #e5e7eb);
+      background: var(--blue, #003764);
+      border-radius: var(--radius, 14px) var(--radius, 14px) 0 0;
+      flex-shrink: 0;
+    }
+
+    .panelTitleAdmin {
+      font-weight: 700;
+      color: #fff;
+      font-size: 14px;
+      font-family: "Rubik", system-ui, sans-serif;
+    }
+
+    /* ── Orders panel: split layout ─────────────────────────────────── */
+    .ordersPanel {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .ordersSplit {
+      display: flex;
+      flex: 1;
+      gap: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* Left: table */
+    .ordersSplitList {
+      flex: 1 1 60%;
+      min-width: 0;
+      overflow: auto;
+      border-right: 1px solid var(--border, #e2e8f0);
+    }
+
+    /* Right: viewer */
+    .ordersSplitViewer {
+      flex: 0 0 36%;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .viewerSubTitle {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted, #94a3b8);
+      padding: 0.65rem 1rem 0.4rem;
+      border-bottom: 1px solid var(--border, #e2e8f0);
+      flex-shrink: 0;
+    }
+
+    .ordersSplitViewer .viewerWrap {
+      flex: 1;
+      overflow: auto;
+      padding: 0;
+    }
+
+    .ordersSplitViewer .txtViewer {
+      margin: 0;
+      padding: 1rem;
+      min-height: 100%;
+    }
+
+    /* ── Orders table ───────────────────────────────────────────────── */
+    #ordersTableWrap {
+      overflow: auto;
+    }
+
+    .ordersTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .ordersTable thead tr {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--panel-head-bg, #f8fafc);
+    }
+
+    .ordersTable th {
+      text-align: left;
+      padding: 0.55rem 0.85rem;
+      font-weight: 600;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted, #94a3b8);
+      border-bottom: 1px solid var(--border, #e2e8f0);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .ordersTable th.sortable { cursor: pointer; }
+    .ordersTable th.sortable:hover { color: var(--text, #1e293b); }
+    .ordersTable th.sorted { color: var(--accent, #3b82f6); }
+
+    .sortArrow {
+      display: inline-block;
+      margin-left: 3px;
+      font-size: 0.7rem;
+      opacity: 1;
+    }
+
+    .sortArrow.inactive { opacity: 0.3; }
+
+    .ordersTable td {
+      padding: 0.5rem 0.85rem;
+      border-bottom: 1px solid var(--border, #e2e8f0);
+      color: var(--text, #1e293b);
+      white-space: nowrap;
+    }
+
+    .ordersTable tr.orderRow {
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .ordersTable tr.orderRow:hover { background: var(--row-hover, #f1f5f9); }
+    .ordersTable tr.orderRow.selected { background: var(--row-selected, #eff6ff); }
+    .ordersTable tr.orderRow.selected td { color: var(--accent, #3b82f6); }
+
+    .idCell {
+      font-family: monospace;
+      font-size: 0.78rem;
+      cursor: pointer;
+      border-bottom: 1px dashed var(--text-muted, #94a3b8);
+      padding-bottom: 1px;
+      transition: color 0.15s;
+    }
+
+    .idCell:hover { color: var(--accent, #3b82f6); }
+    .idCell.copied { color: #22c55e; border-bottom-color: #22c55e; }
+
+    .userCell {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .userEmail {
+      font-size: 0.7rem;
+      color: var(--text-muted, #94a3b8);
+    }
+
+    .emptyCell {
+      text-align: center;
+      color: var(--text-muted, #94a3b8);
+      padding: 1.5rem;
+    }
+
+    /* ── Catalogs list (inside admin panel, no extra header) ─────────── */
+    .catalogsList {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .catalogsList .listRow {
+      display: block;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line, #e5e7eb);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.1s;
+    }
+
+    .catalogsList .listRow:last-child { border-bottom: none; }
+    .catalogsList .listRow:hover { background: var(--row-hover, #f1f5f9); }
+
+    .catalogsList .listTop {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--blue, #003764);
+    }
+
+    .catalogsList .listSub {
+      font-size: 11px;
+      color: var(--gray, #878787);
+      margin-top: 2px;
+    }
+
+    .draftBadge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      background: #fef3c7;
+      color: #92400e;
+      border-radius: 999px;
+      padding: 1px 6px;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    .listEmpty {
+      padding: 1rem;
+      font-size: 13px;
+      color: var(--gray, #878787);
+      text-align: center;
+    }
+  </style>
+
+  <!-- Google Font: Rubik -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Client area</title>
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <!-- Auth guard -->
+  <script src="auth-guard.js"></script>
+  <!-- User badge (shared) -->
+  <script src="user-badge.js"></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a href="index.html" title="Voltar ao catálogo">
+        <img src="assets/logo.svg" alt="CATÁLOGO" class="brandLogo">
+      </a>
+    </div>
+
+    <div class="crumbs"></div>
+
+    <nav class="navTabs">
+      <button class="navTab" id="navECatalog"   style="display:none" type="button">eCatalog</button>
+      <button class="navTab" id="navClientArea" style="display:none" type="button">Client Area</button>
+      <button class="navTab" id="navAdminArea"  style="display:none" type="button">Admin Area</button>
+      <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
+    </nav>
+
+    <button type="button" class="cartBtn" id="btnCart" title="Review cart" aria-label="Review cart" style="display:none">
+      🛒
+      <span class="cartBtnBadge" id="cartBtnBadge" style="display:none"></span>
+    </button>
+
+    <div class="navDivider"></div>
+    <div class="userBadge" id="userBadge" style="display:none"></div>
+    <div class="navDivider"></div>
+    <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">Sign out</button>
+  </header>
+
+  <main class="layout layoutClient">
+
+    <!-- LEFT+CENTER: orders panel — fills all remaining width -->
+    <section class="mid" id="ordersPanel">
+      <div class="adminPanel">
+        <div class="adminPanelTop">
+          <div class="panelTitleAdmin">Order Requests</div>
+        </div>
+
+        <div class="ordersSplit">
+          <!-- Left: sortable table -->
+          <div class="ordersSplitList">
+            <div id="ordersTableWrap">
+              <div class="listEmpty">A carregar…</div>
+            </div>
+          </div>
+
+          <!-- Right: txt viewer -->
+          <div class="ordersSplitViewer">
+            <div class="viewerSubTitle">Selected Order Request</div>
+            <div class="viewerWrap">
+              <pre class="txtViewer" id="txtViewer">Seleciona um pedido à esquerda.</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: catalogues -->
+    <aside class="right">
+      <div class="adminPanel">
+        <div class="adminPanelTop">
+          <div class="panelTitleAdmin">Spare Parts Catalogs</div>
+        </div>
+
+        <div class="catalogsList" id="cataloguesList">
+          <div class="listEmpty">A carregar…</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    function _escHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+    async function openCatalogPicker(role) {
+      const modal = document.getElementById('catalogPickerModal');
+      if (!modal) return;
+      if (!modal._listenersAdded) {
+        modal._listenersAdded = true;
+        document.getElementById('btnCatalogPickerClose')?.addEventListener('click', () => { modal.hidden = true; });
+        document.getElementById('catalogPickerBackdrop')?.addEventListener('click', () => { modal.hidden = true; });
+      }
+      modal.hidden = false;
+      const listEl = document.getElementById('catalogPickerList');
+      listEl.innerHTML = '<div class="catPickerLoading">Loading\u2026</div>';
+      const isDraftVisible = ['admin','catalog_manager'].includes(role);
+      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft'] : ['published']).order('name');
+      if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
+      const showStatus = isDraftVisible;
+      const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;
+      const tbody = cats.map(c=>`<tr class="catPickerRow" data-pai="${_escHtml(c.pai_code)}"><td style="font-weight:600">${_escHtml(c.name)}</td><td><code style="font-size:12px">${_escHtml(c.pai_code)}</code></td><td style="color:#6b7280">${_escHtml(c.description||'\u2014')}</td>${showStatus?`<td><span class="catStatusBadge--${c.status}">${c.status}</span></td>`:''}</tr>`).join('');
+      listEl.innerHTML = `<table class="catPickerTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+      listEl.querySelectorAll('.catPickerRow').forEach(tr=>tr.addEventListener('click',()=>{ window.location.href=`interactive-catalog.html?catalog=${encodeURIComponent(tr.dataset.pai)}`; }));
+    }
+    function setupNavTabs(role, currentPage) {
+      const TABS = [
+        {id:'navECatalog',  key:'ecatalog',  roles:null, href:null},
+        {id:'navClientArea',key:'clientarea',roles:null, href:'client-area.html'},
+        {id:'navAdminArea', key:'adminarea', roles:['admin','client_manager','catalog_manager'], href:'admin-approval.html'},
+        {id:'navCatalogMgr',key:'catalogmgr',roles:['admin','catalog_manager'], href:'catalog-manager.html'},
+      ];
+      for (const tab of TABS) {
+        const el = document.getElementById(tab.id); if (!el) continue;
+        const visible = !tab.roles || tab.roles.includes(role);
+        el.style.display = visible ? '' : 'none';
+        if (tab.key === currentPage) { el.classList.add('active'); }
+        else if (visible) { el.addEventListener('click', tab.href ? ()=>window.location.href=tab.href : ()=>openCatalogPicker(role)); }
+      }
+    }
+  </script>
+
+  <script>
+    (async () => {
+      const session = await window.requireAuth("login.html");
+      if (!session) return;
+
+      window.__session = session;
+
+      try {
+        const { data: prof } = await window.sb
+          .from("profiles")
+          .select("role, requested_full_name, customer_id")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        const role = prof?.role || "";
+        window.__userRole = role;
+
+        setupNavTabs(role, "clientarea");
+        window.renderUserBadge?.(session, prof);
+
+        if (role === 'customer') {
+          const btnCart = document.getElementById('btnCart');
+          const modal = document.getElementById('orderModal');
+          if (btnCart && modal) {
+            // show badge if cart has items
+            const savedCart = JSON.parse(localStorage.getItem('catalogCart') || '[]');
+            const total = savedCart.reduce((s, r) => s + (r.qty || 1), 0);
+            const badge = document.getElementById('cartBtnBadge');
+            if (total > 0 && badge) { badge.textContent = total; badge.style.display = ''; }
+
+            btnCart.style.display = '';
+            btnCart.addEventListener('click', () => {
+              const cart = JSON.parse(localStorage.getItem('catalogCart') || '[]');
+              const bodyEl = document.getElementById('cartBodyModal');
+              if (bodyEl) {
+                if (!cart.length) {
+                  bodyEl.innerHTML = '<div style="padding:16px;color:var(--gray,#878787);text-align:center;font-size:13px;">Your cart is empty. Go to the catalog to add items.</div>';
+                } else {
+                  bodyEl.innerHTML = '';
+                  cart.forEach(row => {
+                    const r = document.createElement('div');
+                    r.className = 'cartRow';
+                    r.innerHTML = `<div class="colPN">${_escHtml(row.partNo)}</div><div class="colDesc">${_escHtml(row.desc)}</div><div class="colPrice">${_escHtml(row.price || 'TBA')}</div><div class="colQty">${_escHtml(String(row.qty))}</div><div class="colRm"></div>`;
+                    bodyEl.appendChild(r);
+                  });
+                }
+              }
+              modal.hidden = false;
+            });
+
+            document.getElementById('btnModalClose')?.addEventListener('click', () => { modal.hidden = true; });
+            document.getElementById('orderModalBackdrop')?.addEventListener('click', () => { modal.hidden = true; });
+            document.getElementById('btnGoToCatalog')?.addEventListener('click', () => {
+              modal.hidden = true;
+              openCatalogPicker(role);
+            });
+          }
+        }
+      } catch {}
+
+      const v = Date.now();
+
+      const s = document.createElement("script");
+      s.src = "client-area.js?v=" + v;
+      document.body.appendChild(s);
+
+      const logout = document.createElement("script");
+      logout.src = "logout.js?v=" + v;
+      document.body.appendChild(logout);
+    })();
+  </script>
+
+  <!-- ===== Cart Modal (customer) ===== -->
+  <div id="orderModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="orderModalBackdrop"></div>
+    <div class="modalPanel" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
+      <div class="modalTop">
+        <div class="panelTitle" id="orderModalTitle">Review order request</div>
+      </div>
+      <div class="modalBody">
+        <div class="cart cartModal">
+          <div class="cartHeader">
+            <div class="colPN">P/N</div>
+            <div class="colDesc">Description</div>
+            <div class="colPrice">Price</div>
+            <div class="colQty">Qty</div>
+            <div class="colRm"></div>
+          </div>
+          <div class="cartBody" id="cartBodyModal"></div>
+        </div>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnModalClose" type="button">Close</button>
+        <button class="btn primary" id="btnGoToCatalog" type="button">Go to catalog</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Catalog Picker Modal -->
+  <div id="catalogPickerModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="catalogPickerBackdrop"></div>
+    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:var(--blue);border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Select a Catalog</div>
+      </div>
+      <div class="modalBody" style="padding:0;overflow:auto;">
+        <div id="catalogPickerList"></div>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnCatalogPickerClose" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
