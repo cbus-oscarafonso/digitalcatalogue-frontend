@@ -1006,6 +1006,32 @@ async function route() {
   await loadSvg(url);
 }
 
+async function setupCatalogSwitcher() {
+  const select = document.getElementById('catalogSwitcherSelect');
+  if (!select) return;
+
+  const isStaff = ['admin', 'catalog_manager'].includes(window.__role || '');
+  const { data: cats } = await window.sb
+    .from('catalogs')
+    .select('name, pai_code')
+    .in('status', isStaff ? ['published', 'draft', 'archived'] : ['published'])
+    .order('name');
+
+  if (!cats?.length) return;
+
+  cats.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.pai_code;
+    opt.textContent = `${c.pai_code} — ${c.name}`;
+    if (c.pai_code === state.catalog?.pai_code) opt.selected = true;
+    select.appendChild(opt);
+  });
+
+  select.addEventListener('change', () => {
+    window.location.href = `interactive-catalog.html?catalog=${encodeURIComponent(select.value)}`;
+  });
+}
+
 async function main() {
   await loadCatalog();
   await loadSearchMeta();
@@ -1013,6 +1039,7 @@ async function main() {
   renderCrumbs();
   clearSelected();
   renderCart();
+  setupCatalogSwitcher();
 
   window.addEventListener('hashchange', () => route().catch(() => { }));
   await route().catch(() => { });

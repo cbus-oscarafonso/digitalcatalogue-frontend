@@ -478,27 +478,40 @@
     toast.success("Pending approval choice cleared.");
   }
 
-  // ── Invite panel UI mode (tab-based) ────────────────────────────────────
+  // ── Invite panel UI mode ──────────────────────────────────────────────────
 
   function setInviteCustomerModeUI() {
-    // With tabs, only manage country picker + notes enabled state in "new" tab
+    const existingSelected = !!inviteSelectedCustomer;
     const newName = inviteNewCustomerName.value.trim();
-    inviteCountryPicker.setEnabled(!!newName);
-    if (inviteCustomerNotes) inviteCustomerNotes.disabled = !newName;
+    const newMode = !!newName;
+
+    if (existingSelected) {
+      inviteNewCard.classList.add("is-disabled");
+      inviteNewCustomerName.disabled = true;
+      inviteCustomerNotes.disabled = true;
+      inviteCountryPicker.setEnabled(false);
+    } else {
+      inviteNewCard.classList.remove("is-disabled");
+      inviteNewCustomerName.disabled = false;
+      inviteCustomerNotes.disabled = !newMode;
+      inviteCountryPicker.setEnabled(newMode);
+    }
+
+    if (newMode) {
+      inviteExistingCard.classList.add("is-disabled");
+      inviteExistingCustomerPicker.setEnabled(false);
+    } else {
+      inviteExistingCard.classList.remove("is-disabled");
+      inviteExistingCustomerPicker.setEnabled(true);
+    }
   }
 
   function clearInviteCustomer() {
     inviteExistingCustomerPicker.clear();
     inviteSelectedCustomer = null;
     inviteNewCustomerName.value = "";
-    if (inviteCustomerNotes) inviteCustomerNotes.value = "";
+    inviteCustomerNotes.value = "";
     inviteCountryPicker.clear();
-    // Reset to first tab
-    const wrap = document.querySelector('#inviteCustomerSection .custTabsWrap');
-    if (wrap) {
-      wrap.querySelectorAll('.custTab').forEach((t, i) => t.classList.toggle('active', i === 0));
-      wrap.querySelectorAll('.custTabPane').forEach((p, i) => p.classList.toggle('active', i === 0));
-    }
     setInviteCustomerModeUI();
   }
 
@@ -592,60 +605,37 @@
     }
 
     if (!data || data.length === 0) {
+      pendingDecisionPanel.classList.add("hidden");
       pendingTbody.innerHTML = `<tr><td colspan="5">No pending client users 🎉</td></tr>`;
       return;
     }
 
-    // Build customer <option> list and country <option> list once
-    const custOpts = customersData.map(c =>
-      `<option value="${esc(c.id)}">${esc(c.name)} (${esc(c.code)})</option>`).join("");
-    const countryOpts = countriesData.map(c =>
-      `<option value="${esc(c.code)}">${esc(c.code)} — ${esc(c.name)}</option>`).join("");
+    pendingDecisionPanel.classList.remove("hidden");
 
     pendingTbody.innerHTML = data.map((p) => {
       const created = p.created_at ? formatDate(p.created_at) : "";
       const display = makeDisplayName(p.requested_full_name);
       const email = p.requested_email || "";
-      const uid = esc(p.user_id);
-      const canAct = canApprovePendingRole(myProf.role, 'customer');
 
       return `
-        <tr data-user-id="${uid}" data-panel="client">
+        <tr data-user-id="${esc(p.user_id)}" data-panel="client">
           <td><span class="pill">pending</span></td>
           <td>
             <strong>${esc(display || "(no name)")}</strong><br>
-            <span class="small">${esc(email || "(no email)")}</span>
+            <span class="small">${esc(email || "(no email)")}</span><br>
+            <span class="mono small">${esc(p.user_id)}</span>
           </td>
           <td>${esc(p.requested_customer_name || "")}</td>
           <td class="small">${esc(created)}</td>
           <td>
             <div class="actions">
-              <button class="btn primary" data-action="approve" ${!canAct ? 'disabled title="Your role cannot approve client users"' : ''}>Approve</button>
-              <button class="btn btn-danger" data-action="reject" ${!canAct ? 'disabled title="Your role cannot reject client users"' : ''}>Reject</button>
-            </div>
-          </td>
-        </tr>
-        <tr class="pendingAssignRow" data-assign-for="${uid}">
-          <td colspan="5">
-            <div class="pendingAssignInner">
-              <div class="custTabs">
-                <button type="button" class="custTab active" data-tab-target="pExist_${uid}">Existing customer</button>
-                <button type="button" class="custTab" data-tab-target="pNew_${uid}">New customer</button>
-              </div>
-              <div class="custTabContent">
-                <div id="pExist_${uid}" class="custTabPane active">
-                  <select class="p-cust-select" data-user-id="${uid}">
-                    <option value="">— select customer —</option>${custOpts}
-                  </select>
-                </div>
-                <div id="pNew_${uid}" class="custTabPane">
-                  <div class="pendingNewRow">
-                    <div><label>Name</label><input type="text" class="p-cust-name" data-user-id="${uid}" placeholder="Customer name…" /></div>
-                    <div><label>Country</label><select class="p-cust-country" data-user-id="${uid}"><option value="">— select —</option>${countryOpts}</select></div>
-                    <div><label>Notes</label><input type="text" class="p-cust-notes" data-user-id="${uid}" placeholder="Optional" /></div>
-                  </div>
-                </div>
-              </div>
+              ${(() => {
+                const canAct = canApprovePendingRole(myProf.role, 'customer');
+                return `
+                  <button class="btn primary" data-action="approve" ${!canAct ? 'disabled title="Your role cannot approve client users"' : ''}>Approve</button>
+                  <button class="btn btn-danger" data-action="reject" ${!canAct ? 'disabled title="Your role cannot reject client users"' : ''}>Reject</button>
+                `;
+              })()}
             </div>
           </td>
         </tr>
@@ -688,7 +678,7 @@
       const allowedRoleValues = getAssignableInternalRolesForApprover(myProf.role);
       const roleOptions = INTERNAL_ROLES
         .filter(r => allowedRoleValues.includes(r.value))
-        .map(r => `<option value="${esc(r.value)}" ${r.value === currentRole ? "selected" : ""}>${esc(r.label)}</option>`)
+        .map(r => `<option value="${esc(r.value)}" ${r.value === currentRole ? "selected" : ""}>${esc(r.label)}</option>` )
         .join("");
 
       return `
@@ -708,12 +698,12 @@
           <td>
             <div class="actions">
               ${(() => {
-          const canAct = canApprovePendingRole(myProf.role, currentRole);
-          return `
+                const canAct = canApprovePendingRole(myProf.role, currentRole);
+                return `
                   <button class="btn primary" data-action="approve" ${!canAct ? 'disabled title="Your role cannot approve this user"' : ''}>Approve</button>
                   <button class="btn btn-danger" data-action="reject" ${!canAct ? 'disabled title="Your role cannot reject this user"' : ''}>Reject</button>
                 `;
-        })()}
+              })()}
             </div>
           </td>
         </tr>
@@ -758,33 +748,12 @@
     return await createCustomerRecord({ name: newName, countryCode, notes });
   }
 
-  // Resolve customer from inline pending row
-  async function resolveInlineCustomerId(userId) {
-    const assignRow = document.querySelector(`tr.pendingAssignRow[data-assign-for="${userId}"]`);
-    if (!assignRow) throw new Error("Customer assignment row not found.");
-    const activeTab = assignRow.querySelector('.custTab.active');
-    const isExisting = activeTab?.dataset.tabTarget?.startsWith('pExist_');
-
-    if (isExisting) {
-      const sel = assignRow.querySelector('.p-cust-select');
-      if (!sel?.value) throw new Error("Please select an existing customer.");
-      return sel.value;
-    } else {
-      const name = assignRow.querySelector('.p-cust-name')?.value.trim();
-      const country = assignRow.querySelector('.p-cust-country')?.value.trim();
-      const notes = assignRow.querySelector('.p-cust-notes')?.value.trim();
-      if (!name) throw new Error("Please enter a customer name.");
-      if (!country) throw new Error("Please select a country.");
-      return await createCustomerRecord({ name, countryCode: country, notes });
-    }
-  }
-
-  async function approveClientUser(userId, customerId) {
+  async function approveClientUser(userId) {
     if (!canApprovePendingRole(myProf.role, "customer")) {
       throw new Error("Your role cannot approve customer requests.");
     }
 
-    if (!customerId) throw new Error("No customer assigned.");
+    const customerId = await resolvePendingCustomerId();
 
     const { error } = await sb
       .from("profiles")
@@ -956,23 +925,25 @@
     let customerName = null;
 
     if (role === "customer") {
-      const activeTab = document.querySelector('#inviteCustomerSection .custTab.active');
-      const isExistingTab = activeTab?.dataset.tabTarget === 'inviteTabExisting';
+      const selectedId = inviteExistingCustomerPicker.getSelectedId();
+      const newName = inviteNewCustomerName.value.trim();
 
-      if (isExistingTab) {
-        const selectedId = inviteExistingCustomerPicker.getSelectedId();
-        if (!selectedId) throw new Error("Please select an existing customer.");
+      if (!selectedId && !newName) {
+        throw new Error("Please select an existing customer or create a new one for this user.");
+      }
+
+      if (selectedId) {
+        // Existing customer
         customerId = selectedId;
         const cust = customersData.find(c => c.id === selectedId);
         customerName = cust ? cust.name : "";
       } else {
-        const newName = inviteNewCustomerName.value.trim();
-        if (!newName) throw new Error("Please enter a name for the new customer.");
+        // Create new customer first, then invite
         toast.success("Creating customer…");
         customerId = await createCustomerRecord({
           name: newName,
           countryCode: inviteCountryPicker.getSelectedCode(),
-          notes: (inviteCustomerNotes ? inviteCustomerNotes.value.trim() : "")
+          notes: inviteCustomerNotes.value.trim()
         });
         customerName = newName;
         await loadCustomers();
@@ -1042,16 +1013,6 @@
     }
     return n;
   }
-
-  function hasUnsavedChanges() {
-    return countPendingChanges() > 0;
-  }
-
-  window.addEventListener("beforeunload", (e) => {
-    if (!hasUnsavedChanges()) return;
-    e.preventDefault();
-    e.returnValue = "";
-  });
 
   function updatePendingBar() {
     const bar = $("pendingChangesBar");
@@ -1355,8 +1316,8 @@
   function renderCustomersTable() {
     const tbody = $("customersTbody");
     if (!tbody) return;
-    const canEditCustomers = ["admin", "client_manager"].includes(window.__myRole);
-    const colCount = canEditCustomers ? 5 : 4;
+    const isAdmin = window.__myRole === "admin";
+    const colCount = isAdmin ? 5 : 4;
 
     const sorted = [...customersData].sort((a, b) => {
       const dir = customersSortDir === "asc" ? 1 : -1;
@@ -1392,7 +1353,7 @@
         <td class="mono small">${esc(c.code)}</td>
         <td>${esc(changes.country?.new ?? (c.country || ""))}</td>
         <td style="color:#6b7280;font-size:12px;">${esc(changes.notes?.new ?? (c.notes || ""))}</td>
-        ${canEditCustomers ? `<td><label class="toggleSwitch" title="Edit"><input type="checkbox" data-toggle-type="customers" data-toggle-id="${esc(c.id)}"><span class="toggleSlider"></span></label></td>` : ""}
+        ${isAdmin ? `<td><label class="toggleSwitch" title="Edit"><input type="checkbox" data-toggle-type="customers" data-toggle-id="${esc(c.id)}"><span class="toggleSlider"></span></label></td>` : ""}
       </tr>`;
     }).join("");
 
@@ -1434,8 +1395,6 @@
   if (myProf.role === "admin") {
     const activeEditCol = $("activeUsersEditColHeader");
     if (activeEditCol) activeEditCol.style.display = "";
-  }
-  if (["admin", "client_manager"].includes(myProf.role)) {
     const custEditCol = $("customersEditColHeader");
     if (custEditCol) custEditCol.style.display = "";
   }
@@ -1447,18 +1406,6 @@
   if (myProf.role === "catalog_manager") {
     document.querySelectorAll(".adminPanel[data-panel-active]")
       .forEach(el => el.style.display = "none");
-  }
-
-  // Create Customer panel: only admin and client_manager
-  if (!["admin", "client_manager"].includes(myProf.role)) {
-    const createCustPanel = $("createCustomerPanel");
-    if (createCustPanel) createCustPanel.style.display = "none";
-  }
-
-  // Load new vehicles subpanel: only admin and catalog_manager
-  if (!["admin", "catalog_manager"].includes(myProf.role)) {
-    const loadVehiclesPanel = $("loadVehiclesSubpanel");
-    if (loadVehiclesPanel) loadVehiclesPanel.style.display = "none";
   }
 
   // Show Admin option in invite role select only for admins
@@ -1612,11 +1559,11 @@
       }
 
       if (action === "approve") {
-        const customerId = await resolveInlineCustomerId(userId);
-        await approveClientUser(userId, customerId);
+        await approveClientUser(userId);
         toast.success("Approved.");
         await loadCustomers();
         await loadActiveUsers();
+        clearPendingChoice();
       } else if (action === "reject") {
         await rejectUser(userId);
         toast.success("Rejected.");
@@ -1703,29 +1650,6 @@
     if (type === "users") sortAndRenderActive();
     else if (type === "vehicles") renderVehicles();
     else if (type === "customers") renderCustomersTable();
-  });
-
-  // ── Tab switching handler (delegated) ───────────────────────────────────
-  document.addEventListener('click', (e) => {
-    const tab = e.target.closest('.custTab');
-    if (!tab) return;
-    e.stopPropagation();
-    const targetId = tab.dataset.tabTarget;
-    if (!targetId) return;
-
-    // Find sibling tabs and panes
-    const tabsContainer = tab.closest('.custTabs') || tab.parentElement;
-    const wrap = tabsContainer.parentElement;
-    const contentEl = wrap.querySelector('.custTabContent');
-
-    // Deactivate all tabs and panes
-    tabsContainer.querySelectorAll('.custTab').forEach(t => t.classList.remove('active'));
-    if (contentEl) contentEl.querySelectorAll('.custTabPane').forEach(p => p.classList.remove('active'));
-
-    // Activate clicked tab and target pane
-    tab.classList.add('active');
-    const pane = document.getElementById(targetId);
-    if (pane) pane.classList.add('active');
   });
 
   // ── Customer row expansion ────────────────────────────────────────────────
@@ -1964,14 +1888,9 @@
       const rows = vcs.map(vc => {
         const cat = vc.catalogs;
         if (!cat) return '';
-        const catName = `<strong>${esc(cat.name)}</strong><br><code style="font-size:10px;color:#6b7280">${esc(cat.pai_code)}</code>`;
-        const goBtn = `<div class="catalogGoWrap" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;">
-          <button class="catalogGoBtn" data-pai="${esc(cat.pai_code)}" data-name="${esc(cat.name)}" title="Go to catalog">→</button>
-          <div class="catalogGoBubble hidden" data-bubble-pai="${esc(cat.pai_code)}">Open catalog: ${esc(cat.name)} →</div>
-        </div>`;
-        return `<tr><td>${catName}${goBtn}</td></tr>`;
+        return `<tr><td><strong>${esc(cat.name)}</strong><br><code style="font-size:10px;color:#6b7280">${esc(cat.pai_code)}</code></td><td><div class="catalogGoWrap" style="display:inline-flex;align-items:center;gap:4px;"><button class="catalogGoBtn" data-pai="${esc(cat.pai_code)}" data-name="${esc(cat.name)}" title="Go to catalog">→</button><div class="catalogGoBubble hidden" data-bubble-pai="${esc(cat.pai_code)}">Open catalog: ${esc(cat.name)} →</div></div></td></tr>`;
       }).join('');
-      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<table class="catalogOrdersTable"><colgroup><col></colgroup><thead><tr><th>Catalog</th></tr></thead><tbody>${rows}</tbody></table>`;
+      expandedTr.querySelector('.customerExpandedInner').innerHTML = `<table class="catalogOrdersTable"><colgroup><col style="width:55%"><col></colgroup><thead><tr><th>Catalog</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
     } catch (err) {
       expandedTr.querySelector('.customerExpandedInner').innerHTML = `<div style="color:#b91c1c;font-size:12px;">Error: ${esc(String(err.message || err))}</div>`;
     }
@@ -2160,7 +2079,7 @@
   }
 
   function getVehicleInputRows() {
-    return Array.from($("vehiclesInputTbody").querySelectorAll("tr:not(.vehicleAddRow)")).map(tr => ({
+    return Array.from($("vehiclesInputTbody").querySelectorAll("tr")).map(tr => ({
       pep_code: tr.querySelector(".vc-pep_code")?.value.trim() || null,
       model: tr.querySelector(".vc-model")?.value.trim() || null,
       production_year: tr.querySelector(".vc-production_year")?.value ? Number(tr.querySelector(".vc-production_year").value) : null,
@@ -2176,28 +2095,16 @@
   function parseCsv(text) {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
-    // Detect separator: use sep= directive if present, otherwise auto-detect
-    let sep = ";";
-    let dataLines = lines;
-    if (lines[0].startsWith("sep=")) {
-      sep = lines[0].replace("sep=", "").trim() || ";";
-      dataLines = lines.slice(1);
-    } else {
-      // Auto-detect: whichever of ; or , produces more columns in the header
-      const semicolons = (lines[0].match(/;/g) || []).length;
-      const commas = (lines[0].match(/,/g) || []).length;
-      sep = commas > semicolons ? "," : ";";
-    }
+    // Skip Excel sep= directive line if present
+    const dataLines = lines[0].startsWith("sep=") ? lines.slice(1) : lines;
     if (dataLines.length < 2) return [];
-    const headers = dataLines[0].split(sep).map(h => h.trim().toLowerCase().replace(/\s+/g, "_"));
-    return dataLines.slice(1)
-      .filter(line => line.trim())
-      .map(line => {
-        const vals = line.split(sep).map(v => v.trim().replace(/^"|"$/g, ""));
-        const obj = {};
-        headers.forEach((h, i) => obj[h] = vals[i] || "");
-        return obj;
-      });
+    const headers = dataLines[0].split(";").map(h => h.trim().toLowerCase().replace(/\s+/g, "_"));
+    return dataLines.slice(1).map(line => {
+      const vals = line.split(";").map(v => v.trim().replace(/^"|"$/g, ""));
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = vals[i] || "");
+      return obj;
+    });
   }
 
   on("btnLoadVehiclesCsv", "click", () => $("vehiclesCsvInput").click());
@@ -2230,7 +2137,7 @@
       customersData.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
 
     // Build rows for vehicles missing customer
-    const inputRows = Array.from($("vehiclesInputTbody").querySelectorAll("tr:not(.vehicleAddRow)"));
+    const inputRows = Array.from($("vehiclesInputTbody").querySelectorAll("tr"));
     const missingRows = inputRows.filter(tr => !tr.querySelector(".vc-customer")?.value);
 
     tbody.innerHTML = missingRows.map((tr, idx) => {
@@ -2315,16 +2222,6 @@
     addVehicleAddPlaceholder();
   });
 
-  function scrollToHashTarget() {
-    const hash = window.location.hash;
-    if (!hash) return;
-
-    const target = document.querySelector(hash);
-    if (!target) return;
-
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   // ── Init ─────────────────────────────────────────────────────────────────
 
   pendingCountryPicker.setEnabled(false);
@@ -2340,6 +2237,4 @@
   clearVehicleInputTable();
   setPendingModeUI();
   setInviteCustomerModeUI();
-
-  setTimeout(scrollToHashTarget, 80);
 })();

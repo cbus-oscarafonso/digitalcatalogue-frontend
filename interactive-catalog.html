@@ -47,13 +47,14 @@
     <nav class="crumbs" id="crumbs"></nav>
     <div class="topLinks">
       <nav class="navTabs">
-        <button class="navTab" id="navECatalog"   style="display:none" type="button">eCatalog</button>
+        <button class="navTab" id="navECatalog" style="display:none" type="button">eCatalog</button>
         <button class="navTab" id="navClientArea" style="display:none" type="button">Client Area</button>
-        <button class="navTab" id="navAdminArea"  style="display:none" type="button">Admin Area</button>
+        <button class="navTab" id="navAdminArea" style="display:none" type="button">Admin Area</button>
         <button class="navTab" id="navCatalogMgr" style="display:none" type="button">Catalog Manager</button>
       </nav>
 
-      <button type="button" class="cartBtn" id="btnCart" title="Review cart" aria-label="Review cart" style="display:none">
+      <button type="button" class="cartBtn" id="btnCart" title="Review cart" aria-label="Review cart"
+        style="display:none">
         🛒
         <span class="cartBtnBadge" id="cartBtnBadge" style="display:none"></span>
       </button>
@@ -61,7 +62,8 @@
       <div class="navDivider"></div>
       <div class="userBadge" id="userBadge" style="display:none"></div>
       <div class="navDivider"></div>
-      <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">Sign out</button>
+      <button class="clientBtn btn-signout" id="btnLogout" title="Sign out" aria-label="Sign out" type="button">Sign
+        out</button>
     </div>
   </header>
 
@@ -89,7 +91,8 @@
               <line x1="11" y1="8" x2="11" y2="14"></line>
             </svg>
           </button>
-          <button id="btnZoomReset" class="zoomBtnFloat zoomBtnFloat--reset" title="Reset zoom (100%)" aria-label="Reset zoom" type="button">
+          <button id="btnZoomReset" class="zoomBtnFloat zoomBtnFloat--reset" title="Reset zoom (100%)"
+            aria-label="Reset zoom" type="button">
             <span>100%</span>
           </button>
           <button id="btnZoomOut" class="zoomBtnFloat" title="Zoom out" aria-label="Zoom out" type="button">
@@ -125,32 +128,25 @@
 
             <div class="actions">
               <button class="btn" id="btnOpenSub" disabled>Open subassembly view</button>
-              <div class="qtyBox">
-                <button class="qtyBtn" id="qtyDown">−</button>
-                <input class="qtyInput" id="qtyInput" type="number" min="1" value="1" />
-                <button class="qtyBtn" id="qtyUp">+</button>
-                <div class="unit">UN</div>
-              </div>
-              <button class="btn primary" id="btnAdd" disabled>Add to cart</button>
             </div>
           </div>
         </div>
 
-        <div class="cart">
-          <div class="cartHeader">
-            <div class="colPN">P/N</div>
-            <div class="colDesc">Description</div>
-            <div class="colPrice">Price</div>
-            <div class="colQty">Qty</div>
-            <div class="colRm"></div>
+        <div class="actionsRow" id="actionsRow" style="display:none">
+          <div class="qtyBox" id="qtyBox">
+            <button class="qtyBtn" id="qtyDown">−</button>
+            <input class="qtyInput" id="qtyInput" type="number" min="1" value="1" />
+            <button class="qtyBtn" id="qtyUp">+</button>
+            <div class="unit">UN</div>
           </div>
-          <div class="cartCatalogTitle" id="miniCartTitle">Current catalog</div>
-          <div class="cartBody" id="cartBody"></div>
+          <button class="btn primary" id="btnAdd" disabled>Add to cart</button>
+        </div>
+      </div>
 
-          <div class="cartFooter">
-            <div class="hint">Please ensure that the desired part numbers and quantities are correct before submitting
-              your request.</div>
-          </div>
+      <div class="panel">
+        <div class="catalogSwitcher">
+          <div class="catalogSwitcherLabel">Switch catalog</div>
+          <select class="catalogSwitcherSelect" id="catalogSwitcherSelect"></select>
         </div>
       </div>
     </aside>
@@ -197,10 +193,8 @@
       <div class="modalTop" style="display:flex; align-items:center; gap:12px;">
         <div class="panelTitle" id="searchModalTitle" style="flex:0 0 auto;">Search</div>
         <div style="flex:1; display:flex; gap:8px; align-items:center;">
-          <input id="searchQ" class="searchInput" type="text"
-            placeholder="Search part numbers or descriptions"
-            autocomplete="off" spellcheck="false"
-            style="flex:1;" />
+          <input id="searchQ" class="searchInput" type="text" placeholder="Search part numbers or descriptions"
+            autocomplete="off" spellcheck="false" style="flex:1;" />
           <button id="searchClear" class="btn" type="button">Clear</button>
         </div>
         <div id="searchStatus" class="searchStatus" style="flex:0 0 auto; font-size:12px; color:var(--gray);"></div>
@@ -225,7 +219,7 @@
   </div>
 
   <script>
-    function _escHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+    function _escHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
     async function openCatalogPicker(role) {
       const modal = document.getElementById('catalogPickerModal');
       if (!modal) return;
@@ -237,28 +231,28 @@
       modal.hidden = false;
       const listEl = document.getElementById('catalogPickerList');
       listEl.innerHTML = '<div class="catPickerLoading">Loading…</div>';
-      const isDraftVisible = ['admin','catalog_manager'].includes(role);
-      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published','draft','archived'] : ['published']).order('name');
+      const isDraftVisible = ['admin', 'catalog_manager'].includes(role);
+      const { data: cats, error } = await window.sb.from('catalogs').select('id,name,pai_code,description,status').in('status', isDraftVisible ? ['published', 'draft', 'archived'] : ['published']).order('name');
       if (error || !cats?.length) { listEl.innerHTML = '<div class="catPickerLoading">No catalogs available.</div>'; return; }
       const showStatus = isDraftVisible;
-      const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus?'<th>Status</th>':''}</tr>`;
-      const tbody = cats.map(c=>`<tr class="catPickerRow" data-pai="${_escHtml(c.pai_code)}"><td style="font-weight:600">${_escHtml(c.name)}</td><td><code style="font-size:12px">${_escHtml(c.pai_code)}</code></td><td style="color:#6b7280">${_escHtml(c.description||'—')}</td>${showStatus?`<td><span class="catStatusBadge--${c.status}">${c.status}</span></td>`:''}</tr>`).join('');
+      const thead = `<tr><th>Name</th><th>PAI Code</th><th>Description</th>${showStatus ? '<th>Status</th>' : ''}</tr>`;
+      const tbody = cats.map(c => `<tr class="catPickerRow" data-pai="${_escHtml(c.pai_code)}"><td style="font-weight:600">${_escHtml(c.name)}</td><td><code style="font-size:12px">${_escHtml(c.pai_code)}</code></td><td style="color:#6b7280">${_escHtml(c.description || '—')}</td>${showStatus ? `<td><span class="catStatusBadge--${c.status}">${c.status}</span></td>` : ''}</tr>`).join('');
       listEl.innerHTML = `<table class="catPickerTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
-      listEl.querySelectorAll('.catPickerRow').forEach(tr=>tr.addEventListener('click',()=>{ window.location.href=`interactive-catalog.html?catalog=${encodeURIComponent(tr.dataset.pai)}`; }));
+      listEl.querySelectorAll('.catPickerRow').forEach(tr => tr.addEventListener('click', () => { window.location.href = `interactive-catalog.html?catalog=${encodeURIComponent(tr.dataset.pai)}`; }));
     }
     function setupNavTabs(role, currentPage) {
       const TABS = [
-        {id:'navECatalog',  key:'ecatalog',  roles:null, href:null},
-        {id:'navClientArea',key:'clientarea',roles:null, href:'client-area.html'},
-        {id:'navAdminArea', key:'adminarea', roles:['admin','client_manager','catalog_manager'], href:'admin-approval.html'},
-        {id:'navCatalogMgr',key:'catalogmgr',roles:['admin','catalog_manager'], href:'catalog-manager.html'},
+        { id: 'navECatalog', key: 'ecatalog', roles: null, href: null },
+        { id: 'navClientArea', key: 'clientarea', roles: null, href: 'client-area.html' },
+        { id: 'navAdminArea', key: 'adminarea', roles: ['admin', 'client_manager', 'catalog_manager'], href: 'admin-approval.html' },
+        { id: 'navCatalogMgr', key: 'catalogmgr', roles: ['admin', 'catalog_manager'], href: 'catalog-manager.html' },
       ];
       for (const tab of TABS) {
         const el = document.getElementById(tab.id); if (!el) continue;
         const visible = !tab.roles || tab.roles.includes(role);
         el.style.display = visible ? '' : 'none';
         if (tab.key === currentPage) { el.classList.add('active'); }
-        else if (visible) { el.addEventListener('click', tab.href ? ()=>window.location.href=tab.href : ()=>openCatalogPicker(role)); }
+        else if (visible) { el.addEventListener('click', tab.href ? () => window.location.href = tab.href : () => openCatalogPicker(role)); }
       }
     }
   </script>
@@ -287,8 +281,9 @@
               window.__handleCheckout?.();
             });
           }
+          document.getElementById('actionsRow').style.display = '';
         }
-      } catch {}
+      } catch { }
 
       const v = Date.now();
 

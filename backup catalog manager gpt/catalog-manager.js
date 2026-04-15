@@ -30,7 +30,7 @@ const BUCKET = "catalogs";
 function $id(id) { return document.getElementById(id); }
 
 function esc(s) {
-  return String(s || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
 function normPartNo(s) {
@@ -56,15 +56,15 @@ function showConfirm(html, onOk, { title = 'Confirm Catalog Submission', okText 
   $id('confirmModalTitle').textContent = title;
   $id('confirmModalBody').innerHTML = html;
   $id('confirmModal').style.display = 'flex';
-  const ok     = $id('btnConfirmOk');
+  const ok = $id('btnConfirmOk');
   const cancel = $id('btnConfirmCancel');
-  ok.textContent     = okText;
+  ok.textContent = okText;
   cancel.textContent = cancelText;
   const cleanup = () => {
     $id('confirmModal').style.display = 'none';
     ok.onclick = null;
     cancel.onclick = null;
-    ok.textContent     = 'Yes, submit';
+    ok.textContent = 'Yes, submit';
     cancel.textContent = 'Cancel';
     $id('confirmModalTitle').textContent = 'Confirm Catalog Submission';
   };
@@ -204,32 +204,31 @@ function createVehiclePicker(config) {
 
     tbody.innerHTML = rows.map(v => {
       const associated = !!v.associated;
-      const unlocked   = !!v.unlocked;
-      const rowCls     = associated ? (unlocked ? 'assoc unlocked' : 'assoc') : '';
+      const unlocked = !!v.unlocked;
+      const rowCls = associated ? (unlocked ? 'assoc unlocked' : 'assoc') : '';
       const chkDisabled = associated && !unlocked ? 'disabled' : '';
       const unlockToggle = associated
         ? `<label class="assocToggle" title="${unlocked ? 'Toggle off to lock this row again' : 'Toggle on to unlock and allow un-associating'}">
-             <input type="checkbox" class="assocUnlockToggle" data-id="${v.id}" ${unlocked ? 'checked' : ''}>
-             <span class="assocToggleSlider"></span>
-           </label>`
+       <input type="checkbox" class="assocUnlockToggle" data-id="${v.id}" ${unlocked ? 'checked' : ''}>
+       <span class="assocToggleSlider"></span>
+     </label>`
         : '';
+
       return `
-        <tr class="${rowCls}">
-          <td style="white-space:nowrap;">
-            <div class="vehicleRowControls">
-              <input type="checkbox" class="vehicleRowChk" data-id="${v.id}" ${v.checked ? 'checked' : ''} ${chkDisabled}>
-              ${unlockToggle}
-            </div>
-          </td>
-          <td>${esc(v.pep_code)}</td>
-          <td>${esc(v.cobus_bus_no)}</td>
-          <td>${esc(v.customer)}</td>
-          <td>${esc(v.vin)}</td>
-        </tr>
-      `;
+  <tr class="${rowCls}">
+    <td style="white-space:nowrap;">
+      <input type="checkbox" data-id="${v.id}" ${v.checked ? 'checked' : ''} ${chkDisabled}>
+      ${unlockToggle}
+    </td>
+    <td>${esc(v.pep_code)}</td>
+    <td>${esc(v.cobus_bus_no)}</td>
+    <td>${esc(v.customer)}</td>
+    <td>${esc(v.vin)}</td>
+  </tr>
+`;
     }).join('');
 
-    tbody.querySelectorAll('.vehicleRowChk').forEach(chk => {
+    tbody.querySelectorAll('input[type="checkbox"]').forEach(chk => {
       chk.addEventListener('change', () => {
         const v = state.vehicles.find(x => x.id === chk.dataset.id);
         if (!v) return;
@@ -293,10 +292,10 @@ function createVehiclePicker(config) {
     }
 
     const filterMap = [
-      [filterIds.pep,      'pep_code'],
-      [filterIds.busNo,    'cobus_bus_no'],
+      [filterIds.pep, 'pep_code'],
+      [filterIds.busNo, 'cobus_bus_no'],
       [filterIds.customer, 'customer'],
-      [filterIds.vin,      'vin'],
+      [filterIds.vin, 'vin'],
     ];
     filterMap.forEach(([id, key]) => {
       const el = $id(id);
@@ -331,9 +330,9 @@ function createVehiclePicker(config) {
     state.originalAssociated = new Set(associatedIds);
     state.vehicles = vehicleList.map(v => ({
       ...v,
-      checked:    assocSet.has(v.id),
+      checked: assocSet.has(v.id),
       associated: assocSet.has(v.id),
-      unlocked:   false,
+      unlocked: false,
     }));
     state.filters = { pep_code: '', cobus_bus_no: '', customer: '', vin: '' };
     Object.values(filterIds).forEach(id => {
@@ -375,19 +374,19 @@ function createVehiclePicker(config) {
 // ── Instantiate pickers ────────────────────────────────────────────────────
 
 const createPicker = createVehiclePicker({
-  tbodyId:         'vehicleTbody',
-  selectAllId:     'chkSelectAll',
+  tbodyId: 'vehicleTbody',
+  selectAllId: 'chkSelectAll',
   selectedCountId: 'selectedCount',
-  tableId:         'vehicleTable',
+  tableId: 'vehicleTable',
   filterIds: { pep: 'filterPep', busNo: 'filterBusNo', customer: 'filterCustomer', vin: 'filterVin' },
   mode: 'create',
 });
 
 const updatePicker = createVehiclePicker({
-  tbodyId:         'uVehicleTbody',
-  selectAllId:     'uChkSelectAll',
+  tbodyId: 'uVehicleTbody',
+  selectAllId: 'uChkSelectAll',
   selectedCountId: 'uSelectedCount',
-  tableId:         'uVehicleTable',
+  tableId: 'uVehicleTable',
   filterIds: { pep: 'uFilterPep2', busNo: 'uFilterBusNo2', customer: 'uFilterCustomer2', vin: 'uFilterVin2' },
   mode: 'update',
 });
@@ -407,18 +406,18 @@ function extractSvgTextNodes(svgDoc) {
 
 function parseBomTokens(nodes) {
   const low = x => (x || '').toLowerCase();
-  const isPos  = x => x === 'Pos.' || low(x) === 'pos.' || low(x) === 'pos';
-  const isQty  = x => x === 'Qty.' || low(x) === 'qty.' || low(x) === 'qty';
+  const isPos = x => x === 'Pos.' || low(x) === 'pos.' || low(x) === 'pos';
+  const isQty = x => x === 'Qty.' || low(x) === 'qty.' || low(x) === 'qty';
   const isDesc = x => low(x) === 'description';
   const isPartNo = x => low(x) === 'part no';
   const isPart = x => low(x) === 'part';
-  const isNo   = x => low(x) === 'no';
+  const isNo = x => low(x) === 'no';
 
   const headers = [];
   for (let i = 0; i < nodes.length; i++) {
-    const [a, b, c, d, e] = [nodes[i], nodes[i+1], nodes[i+2], nodes[i+3], nodes[i+4]];
-    if (isPos(a) && isPartNo(b) && isQty(c) && isDesc(d))          { headers.push({idx:i, headerLen:4}); continue; }
-    if (isPos(a) && isPart(b) && isNo(c) && isQty(d) && isDesc(e)) { headers.push({idx:i, headerLen:5}); continue; }
+    const [a, b, c, d, e] = [nodes[i], nodes[i + 1], nodes[i + 2], nodes[i + 3], nodes[i + 4]];
+    if (isPos(a) && isPartNo(b) && isQty(c) && isDesc(d)) { headers.push({ idx: i, headerLen: 4 }); continue; }
+    if (isPos(a) && isPart(b) && isNo(c) && isQty(d) && isDesc(e)) { headers.push({ idx: i, headerLen: 5 }); continue; }
   }
   if (!headers.length) return [];
 
@@ -427,7 +426,7 @@ function parseBomTokens(nodes) {
     const tail = nodes.slice(h.idx + h.headerLen);
     let start = -1;
     for (let i = 0; i < tail.length - 3; i++) {
-      const [pos, partNo, qty, desc] = [tail[i], tail[i+1], tail[i+2], tail[i+3]];
+      const [pos, partNo, qty, desc] = [tail[i], tail[i + 1], tail[i + 2], tail[i + 3]];
       if (/^\d+$/.test(pos) && /^\d+$/.test(qty) && partNo && desc) { start = i; break; }
       if (i > 0 && isPos(pos)) break;
     }
@@ -435,7 +434,7 @@ function parseBomTokens(nodes) {
 
     let i = start;
     while (i < tail.length - 3) {
-      const [pos, partRaw, qty, desc] = [tail[i], tail[i+1], tail[i+2], tail[i+3]];
+      const [pos, partRaw, qty, desc] = [tail[i], tail[i + 1], tail[i + 2], tail[i + 3]];
       if (!/^\d+$/.test(pos) || !/^\d+$/.test(qty) || !partRaw || !desc) break;
       const partNo = partRaw.replace(/\s+/g, '');
       if (!rowsByPos.has(pos)) rowsByPos.set(pos, { pos, partNo, qty, desc });
@@ -553,24 +552,24 @@ function mimeForFile(name) {
 const dirtyCreate = {
   getDirtyFields() {
     const fields = [];
-    if ($id('fPaiCode').value.trim())       fields.push('PAI Code');
-    if ($id('fName').value.trim())          fields.push('Name');
-    if ($id('fDescription').value.trim())   fields.push('Description');
-    if ($id('fParentSvg').files.length)     fields.push('Parent Assembly SVG');
-    if ($id('fSubSvgs').files.length)       fields.push('Subassembly SVGs');
-    if ($id('fThumbs').files.length)        fields.push('Thumbnails');
+    if ($id('fPaiCode').value.trim()) fields.push('PAI Code');
+    if ($id('fName').value.trim()) fields.push('Name');
+    if ($id('fDescription').value.trim()) fields.push('Description');
+    if ($id('fParentSvg').files.length) fields.push('Parent Assembly SVG');
+    if ($id('fSubSvgs').files.length) fields.push('Subassembly SVGs');
+    if ($id('fThumbs').files.length) fields.push('Thumbnails');
     if (createPicker.getCheckedIds().length) fields.push('Vehicles');
     return fields;
   },
   isDirty() { return this.getDirtyFields().length > 0; },
   reset() {
-    $id('fPaiCode').value     = '';
-    $id('fName').value        = '';
+    $id('fPaiCode').value = '';
+    $id('fName').value = '';
     $id('fDescription').value = '';
-    $id('fStatus').value      = 'published';
-    $id('fParentSvg').value   = '';
-    $id('fSubSvgs').value     = '';
-    $id('fThumbs').value      = '';
+    $id('fStatus').value = 'published';
+    $id('fParentSvg').value = '';
+    $id('fSubSvgs').value = '';
+    $id('fThumbs').value = '';
     createPicker.reset();
   },
 };
@@ -582,10 +581,10 @@ const dirtyUpdate = {
   _ready: false,
   snapshotFrom(cat) {
     this._snapshot = {
-      name:        cat.name || '',
+      name: cat.name || '',
       description: cat.description || '',
-      status:      cat.status || '',
-      note:        '',
+      status: cat.status || '',
+      note: '',
     };
     this._ready = true;
   },
@@ -593,14 +592,14 @@ const dirtyUpdate = {
   getDirtyFields() {
     if (!this._ready || !this._snapshot) return [];
     const fields = [];
-    if ($id('uName').value.trim()        !== this._snapshot.name)        fields.push('Name');
+    if ($id('uName').value.trim() !== this._snapshot.name) fields.push('Name');
     if ($id('uDescription').value.trim() !== this._snapshot.description) fields.push('Description');
-    if ($id('uStatus').value             !== this._snapshot.status)      fields.push('Status');
-    if ($id('uChangeNote').value.trim()  !== this._snapshot.note)        fields.push('Change Note');
-    if ($id('uParentSvg').files.length)  fields.push('Parent Assembly SVG');
-    if ($id('uSubSvgs').files.length)    fields.push('Subassembly SVGs');
-    if ($id('uThumbs').files.length)     fields.push('Thumbnails');
-    if (updatePicker.hasChanges())       fields.push('Vehicles');
+    if ($id('uStatus').value !== this._snapshot.status) fields.push('Status');
+    if ($id('uChangeNote').value.trim() !== this._snapshot.note) fields.push('Change Note');
+    if ($id('uParentSvg').files.length) fields.push('Parent Assembly SVG');
+    if ($id('uSubSvgs').files.length) fields.push('Subassembly SVGs');
+    if ($id('uThumbs').files.length) fields.push('Thumbnails');
+    if (updatePicker.hasChanges()) fields.push('Vehicles');
     return fields;
   },
   isDirty() { return this.getDirtyFields().length > 0; },
@@ -658,14 +657,14 @@ function validateCreate() {
   const errors = [];
 
   const paiCode = $id('fPaiCode').value.trim();
-  const name    = $id('fName').value.trim();
+  const name = $id('fName').value.trim();
   const parentFile = $id('fParentSvg').files[0];
-  const subFiles   = Array.from($id('fSubSvgs').files);
+  const subFiles = Array.from($id('fSubSvgs').files);
   const thumbFiles = Array.from($id('fThumbs').files);
   const selectedVehicleIds = createPicker.getCheckedIds();
 
   if (!paiCode) errors.push('PAI Code is required.');
-  if (!name)    errors.push('Name is required.');
+  if (!name) errors.push('Name is required.');
 
   if (!parentFile) {
     errors.push('Parent Assembly SVG is required.');
@@ -775,11 +774,11 @@ async function doCreateSubmit({ paiCode, name, parentFile, subFiles, thumbFiles,
     tick('Creating catalog record…');
     const description = $id('fDescription').value.trim() || null;
     const { data: rpcData, error: rpcErr } = await window.sb.rpc('create_catalog_with_vehicles', {
-      p_pai_code:    paiCode,
-      p_name:        name,
+      p_pai_code: paiCode,
+      p_name: name,
       p_description: description,
-      p_status:      status,
-      p_kind:        'interactive',
+      p_status: status,
+      p_kind: 'interactive',
       p_vehicle_ids: selectedVehicleIds,
     });
 
@@ -802,7 +801,7 @@ async function doCreateSubmit({ paiCode, name, parentFile, subFiles, thumbFiles,
   } catch (e) {
     console.error(e);
     for (const p of uploadedPaths) {
-      try { await window.sb.storage.from(BUCKET).remove([p]); } catch {}
+      try { await window.sb.storage.from(BUCKET).remove([p]); } catch { }
     }
     showResult('Submission Failed', `<p>${esc(e.message)}</p><p style="margin-top:8px;color:var(--gray2);font-size:12px;">Uploaded files were rolled back.</p>`, true);
     hideProgress();
@@ -815,10 +814,10 @@ async function doCreateSubmit({ paiCode, name, parentFile, subFiles, thumbFiles,
 // UPDATE TAB — catalog picker + edit form + submit
 // ═══════════════════════════════════════════════════════════════════════════
 
-let allCatalogs     = [];
-let uSortCol        = 'name';
-let uSortDir        = 'asc';
-let uFilters        = { name: '', pai_code: '', status: '' };
+let allCatalogs = [];
+let uSortCol = 'name';
+let uSortDir = 'asc';
+let uFilters = { name: '', pai_code: '', status: '' };
 let selectedCatalog = null;
 let updateTabLoaded = false;
 
@@ -855,7 +854,7 @@ async function loadCatalogsForUpdate() {
 
   allCatalogs = (cats || []).map(c => ({
     ...c,
-    _authorName:    nameMap[c.author]     || (c.author     ? c.author.slice(0, 8)     : '—'),
+    _authorName: nameMap[c.author] || (c.author ? c.author.slice(0, 8) : '—'),
     _updatedByName: nameMap[c.updated_by] || (c.updated_by ? c.updated_by.slice(0, 8) : '—'),
   }));
 
@@ -870,7 +869,7 @@ function getCatalogsFiltered() {
   );
   rows.sort((a, b) => {
     let va, vb;
-    if (uSortCol === 'author')          { va = a._authorName;    vb = b._authorName;    }
+    if (uSortCol === 'author') { va = a._authorName; vb = b._authorName; }
     else if (uSortCol === 'updated_by') { va = a._updatedByName; vb = b._updatedByName; }
     else { va = String(a[uSortCol] || ''); vb = String(b[uSortCol] || ''); }
     va = va.toLowerCase(); vb = vb.toLowerCase();
@@ -880,7 +879,7 @@ function getCatalogsFiltered() {
 }
 
 function renderCatalogPicker() {
-  const rows  = getCatalogsFiltered();
+  const rows = getCatalogsFiltered();
   const tbody = $id('catPickerTbody');
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">No catalogs found.</td></tr>`;
@@ -926,9 +925,9 @@ document.querySelectorAll('#catPickerTable th[data-col]').forEach(th => {
   });
 });
 
-$id('uFilterName').addEventListener('input',    e => { uFilters.name     = e.target.value.toLowerCase(); renderCatalogPicker(); });
-$id('uFilterCode').addEventListener('input',    e => { uFilters.pai_code = e.target.value.toLowerCase(); renderCatalogPicker(); });
-$id('uFilterStatus').addEventListener('change', e => { uFilters.status   = e.target.value;               renderCatalogPicker(); });
+$id('uFilterName').addEventListener('input', e => { uFilters.name = e.target.value.toLowerCase(); renderCatalogPicker(); });
+$id('uFilterCode').addEventListener('input', e => { uFilters.pai_code = e.target.value.toLowerCase(); renderCatalogPicker(); });
+$id('uFilterStatus').addEventListener('change', e => { uFilters.status = e.target.value; renderCatalogPicker(); });
 
 async function selectCatalogForEdit(cat) {
   selectedCatalog = cat;
@@ -944,15 +943,15 @@ async function selectCatalogForEdit(cat) {
 
   $id('uBannerName').textContent = cat.name;
   $id('uBannerMeta').textContent = `PAI ${cat.pai_code}  ·  ${cat.status}  ·  Last updated ${fmtDt(cat.updated_at)}`;
-  $id('uPaiCode').value     = cat.pai_code;
-  $id('uName').value        = cat.name;
+  $id('uPaiCode').value = cat.pai_code;
+  $id('uName').value = cat.name;
   $id('uDescription').value = cat.description || '';
-  $id('uKind').value        = cat.kind;
-  $id('uStatus').value      = cat.status;
-  $id('uChangeNote').value  = '';
-  $id('uParentSvg').value   = '';
-  $id('uSubSvgs').value     = '';
-  $id('uThumbs').value      = '';
+  $id('uKind').value = cat.kind;
+  $id('uStatus').value = cat.status;
+  $id('uChangeNote').value = '';
+  $id('uParentSvg').value = '';
+  $id('uSubSvgs').value = '';
+  $id('uThumbs').value = '';
 
   renderChangeLog(cat.change_log || []);
 
@@ -1043,11 +1042,11 @@ async function doArchiveCatalog() {
     }
 
     const logEntry = {
-      ts:        new Date().toISOString(),
-      user_id:   userId,
+      ts: new Date().toISOString(),
+      user_id: userId,
       user_name: userName,
-      fields:    ['status'],
-      note:      `Catalog archived (was ${selectedCatalog.status}).`,
+      fields: ['status'],
+      note: `Catalog archived (was ${selectedCatalog.status}).`,
     };
 
     // Reuse the existing RPC, keeping name/description/vehicle set the same.
@@ -1058,11 +1057,11 @@ async function doArchiveCatalog() {
     const currentVehicleIds = (assoc || []).map(r => r.vehicle_id);
 
     const { error: rpcErr } = await window.sb.rpc('update_catalog_and_vehicles', {
-      p_catalog_id:  selectedCatalog.id,
-      p_name:        selectedCatalog.name,
+      p_catalog_id: selectedCatalog.id,
+      p_name: selectedCatalog.name,
       p_description: selectedCatalog.description,
-      p_status:      'archived',
-      p_log_entry:   logEntry,
+      p_status: 'archived',
+      p_log_entry: logEntry,
       p_vehicle_ids: currentVehicleIds,
     });
 
@@ -1140,7 +1139,7 @@ function showDeleteWizardStep2() {
   $id('confirmModalBody').innerHTML = bodyHtml;
   $id('confirmModal').style.display = 'flex';
 
-  const okBtn     = $id('btnConfirmOk');
+  const okBtn = $id('btnConfirmOk');
   const cancelBtn = $id('btnConfirmCancel');
   okBtn.style.display = 'none';
   cancelBtn.textContent = 'Cancel';
@@ -1168,10 +1167,10 @@ function showDeleteWizardStep2() {
 // ── Drag-to-confirm slider implementation ─────────────────────────────────
 
 function bindDragConfirm({ onComplete }) {
-  const el     = $id('dragConfirmEl');
+  const el = $id('dragConfirmEl');
   const handle = $id('dragConfirmHandle');
-  const fill   = $id('dragConfirmFill');
-  const label  = $id('dragConfirmLabel');
+  const fill = $id('dragConfirmFill');
+  const label = $id('dragConfirmLabel');
   if (!el || !handle) return;
 
   // Compute travel range (px). Handle is 44px wide with 3px margin.
@@ -1225,12 +1224,12 @@ function bindDragConfirm({ onComplete }) {
   // Mouse events
   handle.addEventListener('mousedown', (e) => { e.preventDefault(); onDown(e.clientX); });
   window.addEventListener('mousemove', (e) => onMove(e.clientX));
-  window.addEventListener('mouseup',   onUp);
+  window.addEventListener('mouseup', onUp);
 
   // Touch events
   handle.addEventListener('touchstart', (e) => { if (e.touches[0]) onDown(e.touches[0].clientX); }, { passive: true });
-  window.addEventListener('touchmove',  (e) => { if (e.touches[0]) onMove(e.touches[0].clientX); }, { passive: true });
-  window.addEventListener('touchend',   onUp);
+  window.addEventListener('touchmove', (e) => { if (e.touches[0]) onMove(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchend', onUp);
 }
 
 async function doDeleteCatalog() {
@@ -1240,7 +1239,7 @@ async function doDeleteCatalog() {
   try {
     // 1. Hard-delete via RPC
     const { data: rpcData, error: rpcErr } = await window.sb.rpc('delete_catalog', {
-      p_catalog_id:       cat.id,
+      p_catalog_id: cat.id,
       p_confirm_pai_code: cat.pai_code,
     });
 
@@ -1316,24 +1315,24 @@ $id('btnUpdateSubmit').addEventListener('click', async () => {
   if (!name) { showResult('Validation Error', '<p>Name is required.</p>', true); return; }
   if (!note) { showResult('Validation Error', '<p>Change note is required.</p>', true); return; }
 
-  const currentIds  = updatePicker.getCheckedIds();
+  const currentIds = updatePicker.getCheckedIds();
   const originalIds = updatePicker.getOriginalAssociatedIds();
   const origSet = new Set(originalIds);
   const currSet = new Set(currentIds);
-  const addedIds   = currentIds.filter(id => !origSet.has(id));
+  const addedIds = currentIds.filter(id => !origSet.has(id));
   const removedIds = originalIds.filter(id => !currSet.has(id));
 
-  const parentFile  = $id('uParentSvg').files[0] || null;
-  const subFiles    = Array.from($id('uSubSvgs').files);
-  const thumbFiles  = Array.from($id('uThumbs').files);
+  const parentFile = $id('uParentSvg').files[0] || null;
+  const subFiles = Array.from($id('uSubSvgs').files);
+  const thumbFiles = Array.from($id('uThumbs').files);
 
   const filesToProcess = [];
   if (parentFile) filesToProcess.push({ path: `${paiCode}/${parentFile.name}`, file: parentFile });
-  subFiles.forEach(f  => filesToProcess.push({ path: `${paiCode}/svg/${f.name}`,   file: f }));
+  subFiles.forEach(f => filesToProcess.push({ path: `${paiCode}/svg/${f.name}`, file: f }));
   thumbFiles.forEach(f => filesToProcess.push({ path: `${paiCode}/thumb/${f.name}`, file: f }));
 
   let toReplace = [];
-  let toAdd     = [];
+  let toAdd = [];
   if (filesToProcess.length) {
     const foldersToCheck = new Set(filesToProcess.map(fp => {
       const parts = fp.path.split('/'); parts.pop(); return parts.join('/');
@@ -1419,11 +1418,11 @@ async function doUpdateCatalog({ toReplace, toAdd, name, note, status, currentVe
     }
 
     const changed = [];
-    if (name        !== selectedCatalog.name)                  changed.push('name');
+    if (name !== selectedCatalog.name) changed.push('name');
     if (description !== (selectedCatalog.description || null)) changed.push('description');
-    if (status      !== selectedCatalog.status)                changed.push('status');
-    if (toReplace.length || toAdd.length)                      changed.push('files');
-    if (addedIds.length || removedIds.length)                  changed.push('vehicles');
+    if (status !== selectedCatalog.status) changed.push('status');
+    if (toReplace.length || toAdd.length) changed.push('files');
+    if (addedIds.length || removedIds.length) changed.push('vehicles');
 
     const { data: { session } } = await window.sb.auth.getSession();
     const userId = session?.user?.id || null;
@@ -1436,9 +1435,9 @@ async function doUpdateCatalog({ toReplace, toAdd, name, note, status, currentVe
     }
 
     const replacedNames = toReplace.length ? toReplace.map(fp => fp.file.name).join('\n') : 'none';
-    const addedNames    = toAdd.length     ? toAdd.map(fp => fp.file.name).join('\n')     : 'none';
-    const addedPeps     = addedIds.length   ? addedIds.map(pepCodeFor).join(', ')          : 'none';
-    const removedPeps   = removedIds.length ? removedIds.map(pepCodeFor).join(', ')        : 'none';
+    const addedNames = toAdd.length ? toAdd.map(fp => fp.file.name).join('\n') : 'none';
+    const addedPeps = addedIds.length ? addedIds.map(pepCodeFor).join(', ') : 'none';
+    const removedPeps = removedIds.length ? removedIds.map(pepCodeFor).join(', ') : 'none';
 
     let fullNote = note;
     if (toReplace.length || toAdd.length) {
@@ -1446,40 +1445,40 @@ async function doUpdateCatalog({ toReplace, toAdd, name, note, status, currentVe
     }
     if (addedIds.length || removedIds.length) {
       fullNote += `\nVehicles: +${addedIds.length} added, −${removedIds.length} removed`;
-      if (addedIds.length)   fullNote += `\nAdded: ${addedPeps}`;
+      if (addedIds.length) fullNote += `\nAdded: ${addedPeps}`;
       if (removedIds.length) fullNote += `\nRemoved: ${removedPeps}`;
     }
 
     const logEntry = {
-      ts:        new Date().toISOString(),
-      user_id:   userId,
+      ts: new Date().toISOString(),
+      user_id: userId,
       user_name: userName,
-      fields:    changed,
-      note:      fullNote,
+      fields: changed,
+      note: fullNote,
     };
 
     const { data: rpcData, error: rpcErr } = await window.sb.rpc('update_catalog_and_vehicles', {
-      p_catalog_id:  selectedCatalog.id,
-      p_name:        name,
+      p_catalog_id: selectedCatalog.id,
+      p_name: name,
       p_description: description,
-      p_status:      status,
-      p_log_entry:   logEntry,
+      p_status: status,
+      p_log_entry: logEntry,
       p_vehicle_ids: currentVehicleIds,
     });
 
     if (rpcErr) throw new Error(rpcErr.message);
 
     $id('uParentSvg').value = '';
-    $id('uSubSvgs').value   = '';
-    $id('uThumbs').value    = '';
+    $id('uSubSvgs').value = '';
+    $id('uThumbs').value = '';
 
     showResult(
       'Catalog Updated',
       `<p>Catalog <strong>${esc(name)}</strong> saved successfully.</p>
        ${changed.length ? `<p>Fields changed: <strong>${esc(changed.join(', '))}</strong>.</p>` : '<p>No field values were changed.</p>'}
        ${toReplace.length ? `<p>${toReplace.length} file(s) replaced.</p>` : ''}
-       ${toAdd.length     ? `<p>${toAdd.length} file(s) added.</p>`        : ''}
-       ${addedIds.length   ? `<p>${addedIds.length} vehicle(s) associated.</p>`  : ''}
+       ${toAdd.length ? `<p>${toAdd.length} file(s) added.</p>` : ''}
+       ${addedIds.length ? `<p>${addedIds.length} vehicle(s) associated.</p>` : ''}
        ${removedIds.length ? `<p>${removedIds.length} vehicle(s) dis-associated.</p>` : ''}
        ${rpcData.effective_status !== status ? `<p>Status saved as <strong>${esc(rpcData.effective_status)}</strong>.</p>` : ''}`
     );
@@ -1492,7 +1491,7 @@ async function doUpdateCatalog({ toReplace, toAdd, name, note, status, currentVe
   } catch (e) {
     console.error(e);
     for (const p of newlyUploadedPaths) {
-      try { await window.sb.storage.from(BUCKET).remove([p]); } catch {}
+      try { await window.sb.storage.from(BUCKET).remove([p]); } catch { }
     }
     showResult(
       'Update Failed',
