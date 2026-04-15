@@ -327,6 +327,18 @@ function closeOrderModal() {
 }
 
 function setupUI() {
+  const _role = window.__role || '';
+  const _canOrder = _role === 'customer' || _role === 'admin';
+
+  // Cart panel (bottom-right) always hidden — header cart icon is used instead
+  const _cartPanel = document.querySelector('.cart');
+  if (_cartPanel) _cartPanel.style.display = 'none';
+
+  // Add-to-cart actions (qty + button) only for customer and admin
+  if (!_canOrder) {
+    if (_actionsEl) _actionsEl.style.display = 'none';
+  }
+
   $('qtyDown').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) - 1)));
   $('qtyUp').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) + 1)));
   $('qtyInput').addEventListener('change', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10))));

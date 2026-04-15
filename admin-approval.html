@@ -1180,6 +1180,23 @@
     </div>
   </div>
 
+  <!-- ── Delete user confirmation modal ── -->
+  <div id="deleteUserModal" class="modalOverlay" hidden>
+    <div class="modalBackdrop" id="deleteUserBackdrop"></div>
+    <div class="modalPanel modalPanel--sm" role="dialog" aria-modal="true">
+      <div class="modalTop" style="background:#b91c1c;border-radius:18px 18px 0 0;padding:14px 18px;">
+        <div class="panelTitle" style="color:#fff;">Delete user</div>
+      </div>
+      <div class="modalBody">
+        <p id="deleteUserMessage" style="margin:0;font-size:14px;line-height:1.65;"></p>
+      </div>
+      <div class="modalFooter" style="border-top:none;">
+        <button class="btn" id="btnDeleteUserCancel" type="button">Cancel</button>
+        <button class="btn btn-danger" id="btnDeleteUserConfirm" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Vehicle detail popup ── -->
   <div id="vehicleDetailPopup" class="modalOverlay" hidden>
     <div class="modalBackdrop" id="vehicleDetailPopupBackdrop"></div>

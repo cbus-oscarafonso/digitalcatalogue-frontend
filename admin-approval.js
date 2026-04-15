@@ -1135,7 +1135,10 @@
           <td class="small">${esc(formatDate(u.created_at))}</td>
           <td class="small">${esc(formatDate(u.approved_at))}${u.approver_name ? `<div class="small">${esc(u.approver_name)}</div>` : ""}</td>
           <td class="mono small">${esc(u.user_id)}</td>
-          <td><label class="toggleSwitch" title="Stop editing"><input type="checkbox" data-toggle-type="users" data-toggle-id="${esc(u.user_id)}" checked><span class="toggleSlider"></span></label></td>
+          <td style="display:flex;gap:6px;align-items:center;">
+            <label class="toggleSwitch" title="Stop editing"><input type="checkbox" data-toggle-type="users" data-toggle-id="${esc(u.user_id)}" checked><span class="toggleSlider"></span></label>
+            <button class="btn btn-danger" style="padding:3px 8px;font-size:11px;" data-delete-user-id="${esc(u.user_id)}" data-delete-user-name="${esc(u.display_name)}" data-delete-user-email="${esc(u.email)}">Delete</button>
+          </td>
         </tr>`;
       }
 
@@ -1861,6 +1864,63 @@
 
     const customerTr = e.target.closest('tr.customerRow[data-customer-id]');
     if (customerTr) { toggleCustomerExpanded(customerTr.dataset.customerId, customerTr); return; }
+  });
+
+  // ── Delete / suspend user ─────────────────────────────────────────────────
+  let _deleteTargetId = null;
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-delete-user-id]');
+    if (!btn) return;
+    e.stopPropagation();
+    _deleteTargetId = btn.dataset.deleteUserId;
+    const name  = btn.dataset.deleteUserName || '—';
+    const email = btn.dataset.deleteUserEmail || '—';
+    $('deleteUserMessage').innerHTML =
+      `Are you sure you want to remove <strong>${esc(name)}</strong> (${esc(email)})?<br><br>` +
+      `If this user has any activity in the system they will be <strong>suspended</strong> instead of permanently deleted.`;
+    $('deleteUserModal').hidden = false;
+  });
+
+  on('btnDeleteUserCancel', 'click', () => { $('deleteUserModal').hidden = true; _deleteTargetId = null; });
+  on('deleteUserBackdrop',  'click', () => { $('deleteUserModal').hidden = true; _deleteTargetId = null; });
+
+  on('btnDeleteUserConfirm', 'click', async () => {
+    if (!_deleteTargetId) return;
+    const btn = $('btnDeleteUserConfirm');
+    btn.disabled = true;
+    btn.textContent = 'Working…';
+
+    try {
+      const { data, error } = await window.sb.functions.invoke('delete-or-suspend-user', {
+        body: { target_user_id: _deleteTargetId },
+      });
+
+      if (error) {
+        let msg = error.message || 'Unknown error';
+        try { const body = await error.context?.json?.(); if (body?.error) msg = body.error; } catch {}
+        throw new Error(msg);
+      }
+
+      $('deleteUserModal').hidden = false;
+      _deleteTargetId = null;
+      $('deleteUserModal').hidden = true;
+
+      if (data?.action === 'deleted') {
+        toast.success('User permanently deleted.');
+      } else if (data?.action === 'suspended') {
+        toast.success('User suspended — they have activity in the system and cannot be deleted.');
+      }
+
+      editingRows.users.clear();
+      await loadActiveUsers();
+
+    } catch (err) {
+      toast.error(String(err?.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Confirm';
+    }
   });
 
   // ── Vehicle add-line placeholder ──────────────────────────────────────────

@@ -278,9 +278,10 @@
           .eq("user_id", session.user.id)
           .maybeSingle();
         const role = prof?.role || "";
+        window.__role = role;
         setupNavTabs(role, "ecatalog");
         window.renderUserBadge?.(session, prof);
-        if (role === 'customer') {
+        if (role === 'customer' || role === 'admin') {
           const btnCart = document.getElementById('btnCart');
           if (btnCart) {
             btnCart.style.display = '';
