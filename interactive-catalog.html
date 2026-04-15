@@ -148,7 +148,6 @@
           <div class="cartBody" id="cartBody"></div>
 
           <div class="cartFooter">
-            <button class="btn big primary" id="btnSend">Review full order request</button>
             <div class="hint">Please ensure that the desired part numbers and quantities are correct before submitting
               your request.</div>
           </div>
@@ -285,7 +284,7 @@
           if (btnCart) {
             btnCart.style.display = '';
             btnCart.addEventListener('click', () => {
-              document.getElementById('btnSend')?.click();
+              window.__handleCheckout?.();
             });
           }
         }

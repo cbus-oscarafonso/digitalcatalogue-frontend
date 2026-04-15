@@ -326,16 +326,20 @@ function closeOrderModal() {
   m.hidden = true;
 }
 
+function handleCheckout() {
+  if (!state.cart.length) { toast.error('Your cart is empty!'); return; }
+  renderCart();
+  openOrderModal();
+}
+
+// Expose so the topbar btnCart (wired in the HTML inline script) can call it
+// without depending on any DOM button as an intermediary.
+window.__handleCheckout = handleCheckout;
+
 function setupUI() {
   $('qtyDown').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) - 1)));
   $('qtyUp').addEventListener('click', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10) + 1)));
   $('qtyInput').addEventListener('change', () => $('qtyInput').value = String(Math.max(1, parseInt($('qtyInput').value || '1', 10))));
-
-  $('btnSend').addEventListener('click', () => {
-    if (!state.cart.length) { toast.error('Your cart is empty!'); return; }
-    renderCart();
-    openOrderModal();
-  });
 
   $('btnAdd').addEventListener('click', () => {
     if (!state.selected) return;
