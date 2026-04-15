@@ -336,6 +336,7 @@ function setupUI() {
 
   // Add-to-cart actions (qty + button) only for customer and admin
   if (!_canOrder) {
+    const _actionsEl = document.querySelector('.actions');
     if (_actionsEl) _actionsEl.style.display = 'none';
   }
 
