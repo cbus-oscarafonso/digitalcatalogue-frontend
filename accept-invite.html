@@ -8,13 +8,18 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-client.js"></script>
 
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
 
     body {
       font-family: "Rubik", system-ui, -apple-system, sans-serif;
@@ -33,7 +38,7 @@
       width: 100%;
       max-width: 420px;
       border-radius: var(--radius, 14px);
-      box-shadow: var(--shadow, 0 10px 25px rgba(0,0,0,.08));
+      box-shadow: var(--shadow, 0 10px 25px rgba(0, 0, 0, .08));
       border: 1px solid var(--line, #e5e7eb);
     }
 
@@ -103,8 +108,13 @@
     }
 
     /* ── Fields ── */
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
 
     label {
       display: block;
@@ -114,7 +124,8 @@
       margin-bottom: 6px;
     }
 
-    input, select {
+    input,
+    select {
       width: 100%;
       padding: 10px;
       margin-bottom: 16px;
@@ -126,10 +137,11 @@
       transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-    input:focus, select:focus {
+    input:focus,
+    select:focus {
       outline: none;
-      border-color: rgba(0,55,100,.35);
-      box-shadow: 0 0 0 3px rgba(0,55,100,.12);
+      border-color: rgba(0, 55, 100, .35);
+      box-shadow: 0 0 0 3px rgba(0, 55, 100, .12);
     }
 
     input[readonly] {
@@ -172,12 +184,18 @@
       font: 700 14px "Rubik", system-ui, sans-serif;
       white-space: nowrap;
       transition: transform .12s ease, box-shadow .16s ease, filter .16s ease;
-      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, .08);
       margin-top: 8px;
     }
 
-    .btn:hover  { filter: brightness(1.12); }
-    .btn:active { transform: translateY(1px); }
+    .btn:hover {
+      filter: brightness(1.12);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
     .btn:disabled {
       opacity: .6;
       cursor: not-allowed;
@@ -218,7 +236,7 @@
       padding: 14px 24px;
       border-radius: 10px;
       font: 600 14px "Rubik", sans-serif;
-      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
       opacity: 0;
       transition: opacity 0.3s ease;
       pointer-events: none;
@@ -228,10 +246,24 @@
       white-space: pre-line;
     }
 
-    #toast.show             { opacity: 1; }
-    #toast.toast--ok        { background: #003764; color: #fff; }
-    #toast.toast--err       { background: #b91c1c; color: #fff; }
-    #toast.toast--info      { background: #374151; color: #fff; }
+    #toast.show {
+      opacity: 1;
+    }
+
+    #toast.toast--ok {
+      background: #003764;
+      color: #fff;
+    }
+
+    #toast.toast--err {
+      background: #b91c1c;
+      color: #fff;
+    }
+
+    #toast.toast--info {
+      background: #374151;
+      color: #fff;
+    }
 
     /* ── Success screen ── */
     #successScreen {
@@ -240,7 +272,10 @@
       padding: 8px 0;
     }
 
-    #successScreen .icon { font-size: 40px; margin-bottom: 12px; }
+    #successScreen .icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
 
     #successScreen p {
       font-size: 14px;
@@ -324,7 +359,8 @@
       <div class="icon">✅</div>
       <h2 style="margin-bottom:8px;">Account created!</h2>
       <p id="successMessage">Your account is pending approval. You will be notified once it is activated.</p>
-      <a href="login.html" style="display:block;font:700 14px 'Rubik',sans-serif;color:#003764;text-decoration:none;margin-top:4px;">
+      <a href="login.html"
+        style="display:block;font:700 14px 'Rubik',sans-serif;color:#003764;text-decoration:none;margin-top:4px;">
         Go to Login →
       </a>
     </div>
@@ -346,20 +382,20 @@
     const sb = window.sb;
     const $ = (id) => document.getElementById(id);
 
-    let activeTab  = "client"; // "client" | "internal"
-    let userEmail  = "";
+    let activeTab = "client"; // "client" | "internal"
+    let userEmail = "";
 
     // Whether the admin pre-assigned a role via invite
-    let preAssignedRole       = null; // e.g. "client_manager"
+    let preAssignedRole = null; // e.g. "client_manager"
     let preAssignedCustomerId = null; // uuid string or null
     let preAssignedCustomerName = null; // display name or null
 
     const ROLE_LABELS = {
-      admin:           'Administrator',
-      client_manager:  'Client Manager',
+      admin: 'Administrator',
+      client_manager: 'Client Manager',
       catalog_manager: 'Catalog Manager',
-      internal:        'Internal User',
-      customer:        'Customer',
+      internal: 'Internal User',
+      customer: 'Customer',
     };
 
     // toast() / toast.success() / toast.error() provided globally by toast.js.
@@ -367,9 +403,9 @@
     // ── Tab switching ────────────────────────────────────────
     function setTab(tab) {
       activeTab = tab;
-      $("tabClient").classList.toggle("active",   tab === "client");
+      $("tabClient").classList.toggle("active", tab === "client");
       $("tabInternal").classList.toggle("active", tab === "internal");
-      $("panelClient").classList.toggle("active",   tab === "client");
+      $("panelClient").classList.toggle("active", tab === "client");
       $("panelInternal").classList.toggle("active", tab === "internal");
 
       setTimeout(() => {
@@ -377,21 +413,21 @@
       }, 50);
     }
 
-    $("tabClient").addEventListener("click",   () => setTab("client"));
+    $("tabClient").addEventListener("click", () => setTab("client"));
     $("tabInternal").addEventListener("click", () => setTab("internal"));
 
     // ── Parse token from URL ─────────────────────────────────
     function parseSupabaseParams() {
-      const hash   = window.location.hash.slice(1);
+      const hash = window.location.hash.slice(1);
       const search = window.location.search.slice(1);
       const params = new URLSearchParams(hash || search);
       return {
-        accessToken:  params.get("access_token"),
+        accessToken: params.get("access_token"),
         refreshToken: params.get("refresh_token"),
-        type:         params.get("type"),
-        tokenHash:    params.get("token_hash"),
-        token:        params.get("token"),
-        email:        params.get("email"),
+        type: params.get("type"),
+        tokenHash: params.get("token_hash"),
+        token: params.get("token"),
+        email: params.get("email"),
       };
     }
 
@@ -433,7 +469,7 @@
         // Case 1: access_token in hash (implicit flow)
         if (p.accessToken && p.type === "invite") {
           const { data, error } = await sb.auth.setSession({
-            access_token:  p.accessToken,
+            access_token: p.accessToken,
             refresh_token: p.refreshToken || "",
           });
           if (!error) session = data.session;
@@ -453,7 +489,7 @@
           const { data, error } = await sb.auth.verifyOtp({
             email: p.email,
             token: p.token,
-            type:  "invite",
+            type: "invite",
           });
           if (!error) session = data.session;
         }
@@ -469,7 +505,7 @@
       }
 
       if (!session?.user) {
-        $("mainForm").style.display   = "none";
+        $("mainForm").style.display = "none";
         $("errorScreen").style.display = "block";
         return;
       }
@@ -480,9 +516,9 @@
 
       // ── Check for pre-assigned role in invite metadata ────
       const meta = session.user.user_metadata || {};
-      const validRoles = ['admin','client_manager','catalog_manager','internal','customer'];
+      const validRoles = ['admin', 'client_manager', 'catalog_manager', 'internal', 'customer'];
       if (meta.role && validRoles.includes(meta.role)) {
-        preAssignedRole       = meta.role;
+        preAssignedRole = meta.role;
         preAssignedCustomerId = meta.customer_id || null;
         preAssignedCustomerName = meta.requested_customer_name || null;
         applyPreAssignedUI();
@@ -495,7 +531,7 @@
     $("btnCreate").addEventListener("click", async () => {
       if (!sb) { toast.error("Supabase client missing."); return; }
 
-      const password        = $("password").value;
+      const password = $("password").value;
       const confirmPassword = $("confirmPassword").value;
 
       if (!password) {
@@ -509,7 +545,7 @@
       }
 
       const btn = $("btnCreate");
-      btn.disabled    = true;
+      btn.disabled = true;
       btn.textContent = "Please wait…";
 
       try {
@@ -517,7 +553,7 @@
         const { error: pwErr } = await sb.auth.updateUser({ password });
         if (pwErr) {
           toast.error("Error setting password: " + pwErr.message);
-          btn.disabled    = false;
+          btn.disabled = false;
           btn.textContent = "Create Account";
           return;
         }
@@ -528,7 +564,7 @@
 
         if (!userId) {
           toast.error("Session error. Please try opening the link again.");
-          btn.disabled    = false;
+          btn.disabled = false;
           btn.textContent = "Create Account";
           return;
         }
@@ -538,7 +574,7 @@
           const fullName = ($("preAssignedFullName").value || "").trim();
           if (!fullName) {
             toast.error("Please enter your full name.");
-            btn.disabled    = false;
+            btn.disabled = false;
             btn.textContent = "Create Account";
             return;
           }
@@ -553,7 +589,7 @@
 
           if (activateErr) {
             toast.error("Error activating account: " + activateErr.message);
-            btn.disabled    = false;
+            btn.disabled = false;
             btn.textContent = "Create Account";
             return;
           }
@@ -564,7 +600,7 @@
           // Show active success screen
           $("successMessage").textContent =
             "Your account is now active. You can sign in straight away.";
-          $("mainForm").style.display    = "none";
+          $("mainForm").style.display = "none";
           $("successScreen").style.display = "block";
           return;
         }
@@ -574,36 +610,30 @@
         const fullName = isClient
           ? $("clientFullName").value.trim()
           : $("internalFullName").value.trim();
-        const company  = isClient ? $("companyName").value.trim() : null;
-        const role     = isClient ? "customer" : $("internalRole").value;
+        const company = isClient ? $("companyName").value.trim() : null;
+        const role = isClient ? "customer" : $("internalRole").value;
 
         if (!fullName) {
           toast.error("Please enter your full name.");
-          btn.disabled    = false;
+          btn.disabled = false;
           btn.textContent = "Create Account";
           return;
         }
         if (isClient && !company) {
           toast.error("Please enter your company name.");
-          btn.disabled    = false;
+          btn.disabled = false;
           btn.textContent = "Create Account";
           return;
         }
 
-        const updatePayload = {
-          requested_full_name:     fullName,
-          role:                    role,
-          requested_customer_name: isClient ? company : null,
-        };
-
-        const { error: profileErr } = await sb
-          .from("profiles")
-          .update(updatePayload)
-          .eq("user_id", userId);
-
+        const { error: profileErr } = await sb.rpc('complete_self_signup_profile', {
+          p_full_name: fullName,
+          p_role: role,
+          p_customer_name: isClient ? company : null,
+        });
         if (profileErr) {
           toast.error("Error saving profile: " + profileErr.message);
-          btn.disabled    = false;
+          btn.disabled = false;
           btn.textContent = "Create Account";
           return;
         }
@@ -612,7 +642,7 @@
         await sb.auth.updateUser({
           data: {
             full_name: fullName,
-            role:      role,
+            role: role,
             ...(isClient ? { requested_customer_name: company } : {}),
           }
         });
@@ -620,12 +650,12 @@
         // Show pending success screen
         $("successMessage").textContent =
           "Your account is pending approval. You will be notified once it is activated.";
-        $("mainForm").style.display    = "none";
+        $("mainForm").style.display = "none";
         $("successScreen").style.display = "block";
 
       } catch (err) {
         toast.error("Unexpected error: " + err.message);
-        btn.disabled    = false;
+        btn.disabled = false;
         btn.textContent = "Create Account";
       }
     });
