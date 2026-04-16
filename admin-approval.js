@@ -69,6 +69,7 @@
 
   const pendingTbody = $("pendingTbody");
   const pendingInternalTbody = $("pendingInternalTbody");
+  const pendingInvitesTbody = $("pendingInvitesTbody");
   const activeTbody = $("activeTbody");
 
   const existingCustomerSearchStandalone = null; // replaced by customers table
@@ -721,6 +722,46 @@
     }).join("");
   }
 
+  // ── loadPendingInvites – invited but not yet accepted ────────────────────
+async function loadPendingInvites() {
+  pendingInvitesTbody.innerHTML = `<tr><td colspan="3">Loading…</td></tr>`;
+
+  const { data, error } = await sb
+    .from("profiles")
+    .select("user_id, role, requested_email, requested_full_name, created_at")
+    .eq("status", "pending_invite")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    pendingInvitesTbody.innerHTML = `<tr><td colspan="3">Failed to load: ${esc(error.message)}</td></tr>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    pendingInvitesTbody.innerHTML = `<tr><td colspan="3">No pending invites 🎉</td></tr>`;
+    return;
+  }
+
+  const ROLE_LABELS = {
+    admin: "Admin", client_manager: "Client Mgr",
+    catalog_manager: "Catalog Mgr", internal: "Internal", customer: "Customer",
+  };
+
+  pendingInvitesTbody.innerHTML = data.map((p) => {
+    const email = p.requested_email || "(no email)";
+    const roleLabel = ROLE_LABELS[p.role] || p.role || "—";
+    const invited = p.created_at ? formatDate(p.created_at) : "";
+    return `
+      <tr>
+        <td>
+          <strong>${esc(email)}</strong>
+        </td>
+        <td><span class="pill">${esc(roleLabel)}</span></td>
+        <td class="small">${esc(invited)}</td>
+      </tr>`;
+  }).join("");
+}
+
   // ── Approve / reject ─────────────────────────────────────────────────────
 
   async function createCustomerRecord({ name, countryCode, notes }) {
@@ -1018,6 +1059,7 @@
     // Refresh tables so any new pending row appears
     await loadPending();
     await loadPendingInternal();
+    await loadPendingInvites();
     await loadActiveUsers();
   }
 
@@ -1480,6 +1522,7 @@
     await loadCountries();
     await loadPending();
     await loadPendingInternal();
+    await loadPendingInvites();
     await loadActiveUsers();
     setPendingModeUI();
   });
@@ -2335,6 +2378,7 @@
   await loadCountries();
   await loadPending();
   await loadPendingInternal();
+  await loadPendingInvites();
   await loadActiveUsers();
   await loadVehicles();
   clearVehicleInputTable();

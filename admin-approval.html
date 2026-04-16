@@ -1352,9 +1352,9 @@
 
       </div>
     </section>
-
+<div style="display:flex;gap:18px;align-items:flex-start;">
     <!-- ── PENDING SIGN UP REQUESTS ──────────────────────────── -->
-    <section class="adminPanel" data-panel-pending>
+    <section class="adminPanel" data-panel-pending style="flex:1 1 70%;">
       <div class="adminPanelTop">
         <div class="panelTitleAdmin">Pending sign up requests</div>
       </div>
@@ -1470,6 +1470,33 @@
         </table>
       </div>
     </section>
+
+    <!-- ── PENDING INVITES ──────────────────────────────────── -->
+    <section class="adminPanel" style="flex:0 0 30%;min-width:280px;">
+      <div class="adminPanelTop">
+        <div class="panelTitleAdmin">Pending invites</div>
+      </div>
+      <div class="adminTableWrap">
+        <table class="pendingTable">
+          <colgroup>
+            <col><col style="width:100px"><col style="width:90px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Role</th>
+              <th>Invited</th>
+            </tr>
+          </thead>
+          <tbody id="pendingInvitesTbody">
+            <tr><td colspan="3">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    </div><!-- end flex wrapper -->
+
 
     <!-- ── ACTIVE USERS ────────────────────────────────────── -->
     <section class="adminPanel" data-panel-active>

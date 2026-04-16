@@ -583,7 +583,7 @@
           // that reads customer_id from raw_user_meta_data and sets
           // status='active' + customer_id in one UPDATE, bypassing the
           // _profiles_enforce_pending trigger's guard.
-          const { error: activateErr } = await sb.rpc('activate_invited_profile', {
+          const { error: activateErr } = await sb.rpc('activate_invited_profile_v2', {
             p_full_name: fullName,
           });
 
