@@ -255,9 +255,6 @@
       white-space: nowrap;
     }
 
-    e-space: nowrap;
-    }
-
     .th-sort {
       cursor: pointer;
     }
@@ -761,7 +758,7 @@
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #6b7280;
+      color: #003764;
       padding: 14px 14px 6px;
     }
 
@@ -773,6 +770,42 @@
       border-top: 1px solid var(--line, #e5e7eb);
       margin-top: 8px;
     }
+
+#pendingTbody tr,
+#pendingTbody td {
+  background-color: #f0f0f0;
+}
+
+#pendingInternalTbody tr,
+#pendingInternalTbody td {
+  background-color: #f0f0f0;
+}
+
+#pendingTbody tr td {
+  border-top: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+}
+
+#pendingTbody tr:first-child td {
+  border-top: revert;
+}
+
+#pendingInternalTbody tr:last-child td {
+  border-bottom: revert;
+}
+
+#pendingInternalTbody tr td {
+  border-top: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+}
+
+#pendingInternalTbody tr:first-child td {
+  border-top: revert;
+}
+
+#pendingInternalTbody tr:last-child td {
+  border-bottom: revert;
+}
 
     /* ── Aligned pending tables ── */
     .pendingTable {
@@ -1133,7 +1166,7 @@
     /* ── Pending inline customer assignment ── */
     .pendingAssignRow>td {
       padding: 0 !important;
-      background: #f8fafc;
+      background: #98b1ca;
       border-bottom: 1px solid var(--line, #e5e7eb);
     }
 

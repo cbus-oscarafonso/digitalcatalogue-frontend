@@ -580,7 +580,7 @@
     const { data, error } = await sb
       .from("profiles")
       .select("user_id, role, requested_customer_name, requested_email, requested_full_name, created_at")
-      .eq("status", "pending")
+      .eq("status", "pending_approval")
       .eq("role", "customer")
       .order("created_at", { ascending: false });
 
@@ -663,7 +663,7 @@
     const { data, error } = await sb
       .from("profiles")
       .select("user_id, role, requested_email, requested_full_name, created_at")
-      .eq("status", "pending")
+      .eq("status", "pending_approval")
       .in("role", INTERNAL_ROLE_VALUES)
       .order("created_at", { ascending: false });
 
@@ -795,7 +795,7 @@
         approved_by: myUserId
       })
       .eq("user_id", userId)
-      .eq("status", "pending");
+      .eq("status", "pending_approval")
 
     if (error) throw new Error("Approving user failed: " + error.message);
   }
@@ -819,7 +819,7 @@
         approved_by: myUserId
       })
       .eq("user_id", userId)
-      .eq("status", "pending");
+      .eq("status", "pending_approval")
 
     if (error) throw new Error("Approving internal user failed: " + error.message);
   }
@@ -833,7 +833,7 @@
         approved_by: myUserId
       })
       .eq("user_id", userId)
-      .eq("status", "pending");
+      .eq("status", "pending_approval")
 
     if (error) throw new Error("Reject failed: " + error.message);
   }
@@ -981,7 +981,7 @@
 
     toast.success("Sending invitation…");
 
-    const redirectTo = `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/accept-invite.html`;
+    const redirectTo = "https://cbus-oscarafonso.github.io/digitalcatalogue-frontend/accept-invite.html";
 
     const { data, error } = await window.sb.functions.invoke("invite-user", {
       body: {
